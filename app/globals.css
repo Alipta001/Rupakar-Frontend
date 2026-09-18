@@ -1,0 +1,235 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Rupakar Brand Colors */
+  --terracotta: #6B3E26;
+  --clay-brown: #8B5A3C;
+  --dark-coffee: #4A2C1A;
+  --deep-earth: #3A2418;
+
+  --warm-ivory: #F8F4EE;
+  --soft-sand: #F4E8D8;
+  --muted-beige: #EFE3D3;
+
+  --antique-gold: #C89B3C;
+  --rustic-gold: #B7792B;
+  --deep-maroon: #7A1F1F;
+  --burnt-orange: #A64521;
+
+  --rich-dark: #1E1A17;
+  --warm-brown: #3A2A20;
+  --muted-brown: #5B4B3F;
+
+  /* Semantic Tokens */
+  --background: #F8F4EE;
+  --foreground: #1E1A17;
+  --card: #F4E8D8;
+  --card-foreground: #1E1A17;
+  --popover: #F8F4EE;
+  --popover-foreground: #1E1A17;
+  --primary: #6B3E26;
+  --primary-foreground: #F8F4EE;
+  --secondary: #EFE3D3;
+  --secondary-foreground: #3A2A20;
+  --muted: #EFE3D3;
+  --muted-foreground: #5B4B3F;
+  --accent: #C89B3C;
+  --accent-foreground: #1E1A17;
+  --destructive: #7A1F1F;
+  --destructive-foreground: #F8F4EE;
+  --border: #D4C4B0;
+  --input: #EFE3D3;
+  --ring: #C89B3C;
+  --radius: 0.25rem;
+
+  --sidebar: #4A2C1A;
+  --sidebar-foreground: #F8F4EE;
+  --sidebar-primary: #C89B3C;
+  --sidebar-primary-foreground: #1E1A17;
+  --sidebar-accent: #3A2418;
+  --sidebar-accent-foreground: #F8F4EE;
+  --sidebar-border: #6B3E26;
+  --sidebar-ring: #C89B3C;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-cormorant);
+  --font-display: var(--font-playfair);
+  --font-italiana: var(--font-italiana);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Brand custom colors */
+  --color-terracotta: var(--terracotta);
+  --color-clay-brown: var(--clay-brown);
+  --color-dark-coffee: var(--dark-coffee);
+  --color-deep-earth: var(--deep-earth);
+  --color-warm-ivory: var(--warm-ivory);
+  --color-soft-sand: var(--soft-sand);
+  --color-muted-beige: var(--muted-beige);
+  --color-antique-gold: var(--antique-gold);
+  --color-rustic-gold: var(--rustic-gold);
+  --color-deep-maroon: var(--deep-maroon);
+  --color-burnt-orange: var(--burnt-orange);
+  --color-rich-dark: var(--rich-dark);
+  --color-warm-brown: var(--warm-brown);
+  --color-muted-brown: var(--muted-brown);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-playfair), var(--font-cormorant), Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--warm-ivory);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--clay-brown);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--terracotta);
+}
+
+/* Grain texture overlay */
+.grain-overlay {
+  position: relative;
+}
+.grain-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Gold shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.gold-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--rustic-gold) 0%,
+    var(--antique-gold) 40%,
+    #E8C56E 50%,
+    var(--antique-gold) 60%,
+    var(--rustic-gold) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+
+@layer components {
+  .auth-pin {
+    @apply inline-flex h-14 w-14 items-center justify-center rounded-[1.75rem] border border-[#D4C4B0] bg-white/95 text-center text-2xl font-semibold tracking-[0.35em] text-[#1E1A17] transition duration-300 focus:border-[#C89B3C] focus:outline-none focus:ring-2 focus:ring-[#C89B3C]/20;
+  }
+}
+
+/* Image hover zoom */
+.img-zoom-wrap {
+  overflow: hidden;
+}
+.img-zoom-wrap img {
+  transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.img-zoom-wrap:hover img {
+  transform: scale(1.07);
+}
+
+/* Luxury underline */
+.luxury-underline {
+  position: relative;
+}
+.luxury-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--antique-gold);
+  transition: width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.luxury-underline:hover::after {
+  width: 100%;
+}
+
+/* Section divider ornament */
+.ornament-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+}
+.ornament-divider::before,
+.ornament-divider::after {
+  content: '';
+  flex: 1;
+  max-width: 80px;
+  height: 1px;
+  background: var(--antique-gold);
+  opacity: 0.5;
+}
