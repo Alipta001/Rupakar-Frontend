@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
+import { useQueryClient } from '@tanstack/react-query'
 import { AuthShell } from '@/components/auth-shell'
 import { authLogin, setAuth, AUTH_USER_STORAGE_KEY } from '@/redux/slice/authSlice/authSlice'
+import { syncGuestWishlistToServer, mergeGuestCart } from '@/lib/customer-api'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,6 +16,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const dispatch = useDispatch<any>()
+  const queryClient = useQueryClient()
   const { loading } = useSelector((state: any) => state.auth)
   const router = useRouter()
 
@@ -41,6 +44,18 @@ export default function LoginPage() {
         if (typeof window !== 'undefined' && normalizedUser) {
           window.localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(normalizedUser))
         }
+
+        // Merge guest cart and guest wishlist into user account
+        try {
+          await mergeGuestCart()
+          await syncGuestWishlistToServer()
+        } catch {
+          // Merge handled best-effort on client and server
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['cart'] })
+        queryClient.invalidateQueries({ queryKey: ['wishlist'] })
+        queryClient.invalidateQueries({ queryKey: ['orders'] })
       }
 
       router.push('/account')

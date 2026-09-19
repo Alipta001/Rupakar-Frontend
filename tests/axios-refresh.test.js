@@ -138,3 +138,24 @@ test('fires auth-expired only when refresh ultimately fails', async () => {
     restoreWindow()
   }
 })
+
+test('notifies onTokenRefreshed subscribers with new token', async () => {
+  const { client, exports, restoreWindow } = loadAxiosModule(async () => ({
+    data: { data: { accessToken: 'token-for-subscribers' } },
+  }))
+
+  const received = []
+  const unsub = exports.onTokenRefreshed((token) => received.push(token))
+
+  try {
+    await client.reject({
+      config: { url: '/cart', headers: {} },
+      response: { status: 401 },
+    })
+
+    assert.deepEqual(received, ['token-for-subscribers'])
+    unsub()
+  } finally {
+    restoreWindow()
+  }
+})

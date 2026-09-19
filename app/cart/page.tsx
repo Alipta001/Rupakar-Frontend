@@ -1,6 +1,7 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSelector } from 'react-redux'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -12,6 +13,10 @@ import { clearCart, fetchCart, removeCartItem, updateCartItem } from '@/lib/cust
 export default function CartPage() {
   const queryClient = useQueryClient()
   const authHydrated = useSelector((state: any) => state.auth.hydrated)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const sequenceMap = useRef<Map<string, number>>(new Map())
+  const snapshotMap = useRef<Map<string, any>>(new Map())
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['cart'],
     queryFn: fetchCart,
@@ -23,37 +28,128 @@ export default function CartPage() {
   const subtotal = Number(data?.subtotal ?? 0)
   const total = Number(data?.total ?? subtotal)
 
-  const removeMutation = useMutation({
-    mutationFn: (variantId: string) => removeCartItem(variantId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cart'] }),
-  })
+  const recalculateCart = (rawItems: any[]) => {
+    let sum = 0
+    const normalized = rawItems.map((item) => {
+      const price = Number(item?.price ?? item?.unitPrice ?? 0)
+      const quantity = Number(item?.quantity ?? 1)
+      const lineTotal = price * quantity
+      sum += lineTotal
+      return { ...item, quantity, price, lineTotal }
+    })
+    const itemCount = normalized.reduce((acc, it) => acc + Number(it.quantity || 0), 0)
+    return { items: normalized, subtotal: sum, total: sum, itemCount }
+  }
 
-  const updateQuantityMutation = useMutation({
-    mutationFn: ({ variantId, quantity }: { variantId: string; quantity: number }) => updateCartItem(variantId, quantity),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cart'] }),
-  })
-
-  const clearMutation = useMutation({
-    mutationFn: clearCart,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cart'] }),
-  })
-
-  const updateQuantity = async (variantId: string, nextQuantity: number) => {
+  const updateQuantity = async (variantId: string, targetQuantity: number) => {
     if (!variantId) return
-    if (nextQuantity <= 0) {
-      await removeMutation.mutateAsync(variantId)
+    setErrorMessage(null)
+
+    if (targetQuantity <= 0) {
+      await handleRemove(variantId)
       return
     }
 
-    await updateQuantityMutation.mutateAsync({ variantId, quantity: nextQuantity })
+    await queryClient.cancelQueries({ queryKey: ['cart'] })
+
+    const previousCart = queryClient.getQueryData(['cart'])
+    const currentSeq = (sequenceMap.current.get(variantId) ?? 0) + 1
+    sequenceMap.current.set(variantId, currentSeq)
+
+    if (!snapshotMap.current.has(variantId)) {
+      snapshotMap.current.set(variantId, previousCart)
+    }
+
+    queryClient.setQueryData(['cart'], (old: any) => {
+      if (!old || !Array.isArray(old.items)) return old
+      const updatedItems = old.items.map((item: any) => {
+        const itemVariantId = String(item?.variantId ?? item?._id ?? item?.id ?? '')
+        if (itemVariantId === String(variantId)) {
+          return { ...item, quantity: targetQuantity }
+        }
+        return item
+      })
+      const recalc = recalculateCart(updatedItems)
+      return { ...old, ...recalc }
+    })
+
+    try {
+      const serverCart = await updateCartItem(variantId, targetQuantity)
+
+      if (sequenceMap.current.get(variantId) === currentSeq) {
+        snapshotMap.current.delete(variantId)
+        if (serverCart && Array.isArray(serverCart.items)) {
+          queryClient.setQueryData(['cart'], serverCart)
+        }
+      }
+    } catch (err: any) {
+      if (sequenceMap.current.get(variantId) === currentSeq) {
+        const snapshot = snapshotMap.current.get(variantId) ?? previousCart
+        snapshotMap.current.delete(variantId)
+        if (snapshot) {
+          queryClient.setQueryData(['cart'], snapshot)
+        }
+        const msg = err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || 'Could not update item quantity'
+        setErrorMessage(msg)
+      }
+    }
   }
 
   const handleRemove = async (variantId: string) => {
-    await removeMutation.mutateAsync(variantId)
+    if (!variantId) return
+    setErrorMessage(null)
+    await queryClient.cancelQueries({ queryKey: ['cart'] })
+    const previousCart = queryClient.getQueryData(['cart'])
+
+    queryClient.setQueryData(['cart'], (old: any) => {
+      if (!old || !Array.isArray(old.items)) return old
+      const updatedItems = old.items.filter((item: any) => {
+        const itemVariantId = String(item?.variantId ?? item?._id ?? item?.id ?? '')
+        return itemVariantId !== String(variantId)
+      })
+      const recalc = recalculateCart(updatedItems)
+      return { ...old, ...recalc }
+    })
+
+    try {
+      const serverCart = await removeCartItem(variantId)
+      if (serverCart && Array.isArray(serverCart.items)) {
+        queryClient.setQueryData(['cart'], serverCart)
+      }
+    } catch (err: any) {
+      if (previousCart) {
+        queryClient.setQueryData(['cart'], previousCart)
+      }
+      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || 'Could not remove item'
+      setErrorMessage(msg)
+    }
   }
 
   const handleClear = async () => {
-    await clearMutation.mutateAsync()
+    setErrorMessage(null)
+    await queryClient.cancelQueries({ queryKey: ['cart'] })
+    const previousCart = queryClient.getQueryData(['cart'])
+
+    queryClient.setQueryData(['cart'], (old: any) => ({
+      ...old,
+      items: [],
+      subtotal: 0,
+      total: 0,
+      itemCount: 0,
+    }))
+
+    try {
+      const serverCart = await clearCart()
+      if (serverCart && Array.isArray(serverCart.items)) {
+        queryClient.setQueryData(['cart'], serverCart)
+      }
+    } catch (err: any) {
+      if (previousCart) {
+        queryClient.setQueryData(['cart'], previousCart)
+      }
+      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || 'Could not clear cart'
+      setErrorMessage(msg)
+    }
   }
 
   return (
@@ -61,6 +157,12 @@ export default function CartPage() {
       <Navbar />
       <section className="min-h-screen bg-[#F8F4EE] pt-32">
         <div className="max-w-5xl mx-auto px-6 py-20">
+          {errorMessage && (
+            <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-sans flex items-center justify-between">
+              <span>{errorMessage}</span>
+              <button onClick={() => setErrorMessage(null)} className="text-red-500 hover:text-red-700 text-xs uppercase tracking-wider font-semibold">Dismiss</button>
+            </div>
+          )}
           {isLoading ? (
             <div className="rounded-lg border border-[#D4C4B0] bg-white/60 p-10 text-center text-[#5B4B3F] font-sans text-sm">Loading your cart…</div>
           ) : isError ? (

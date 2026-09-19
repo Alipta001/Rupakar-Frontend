@@ -58,7 +58,14 @@ function ProductDetailContent({ product }: { product: Product }) {
       if (wishlist) {
         await removeWishlistItem(productId)
       } else {
-        await addWishlistItem(productId)
+        const rawImg: any = product.images?.[0]
+        const primaryImg = (typeof rawImg === 'object' ? rawImg?.url : rawImg) || product.image
+        await addWishlistItem(productId, {
+          name: product.name,
+          price: product.price,
+          image: primaryImg,
+          artisan: product.craft || 'Rupakar Artisan',
+        })
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),

@@ -50,6 +50,24 @@ export const setAccessToken = (token: string | null) => {
   }
 };
 
+type TokenListener = (token: string) => void;
+const tokenListeners: Set<TokenListener> = new Set();
+
+export const onTokenRefreshed = (fn: TokenListener) => {
+  tokenListeners.add(fn);
+  return () => {
+    tokenListeners.delete(fn);
+  };
+};
+
+const notifyTokenRefreshed = (token: string) => {
+  tokenListeners.forEach((fn) => {
+    try {
+      fn(token);
+    } catch {}
+  });
+};
+
 const triggerAuthExpired = () => {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event("rupakar:auth-expired"));
@@ -66,6 +84,9 @@ const refreshAccessToken = async (): Promise<string | null> => {
     const newAccessToken = payload.accessToken ?? payload.token ?? null;
 
     setAccessToken(newAccessToken);
+    if (newAccessToken) {
+      notifyTokenRefreshed(newAccessToken);
+    }
     return newAccessToken;
   } catch {
     setAccessToken(null);
@@ -126,8 +147,12 @@ AxiosInstance.interceptors.response.use(
         const newAccessToken = await refreshPromise;
 
         if (newAccessToken) {
-          originalRequest.headers = originalRequest.headers ?? {};
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          if (originalRequest.headers && typeof originalRequest.headers.set === "function") {
+            originalRequest.headers.set("Authorization", `Bearer ${newAccessToken}`);
+          } else {
+            originalRequest.headers = originalRequest.headers ?? {};
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          }
           return AxiosInstance(originalRequest);
         }
       } catch {

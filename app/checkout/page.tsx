@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, MapPin, CreditCard, Truck, CheckCircle, Plus, X } from 'lucide-react'
 import Navbar from '@/components/navbar'
@@ -347,7 +348,7 @@ export default function CheckoutPage() {
               {/* Left: Steps */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Step indicators */}
-                <div className="flex items-center gap-0 mb-2">
+                <div className="flex items-center gap-0 mb-2 overflow-x-auto">
                   {(['address', 'payment', 'review'] as Step[]).map((s, i) => {
                     const labels = { address: 'Shipping', payment: 'Payment', review: 'Review' }
                     const icons = { address: MapPin, payment: CreditCard, review: Truck }
@@ -355,9 +356,9 @@ export default function CheckoutPage() {
                     const isDone = (step === 'payment' && s === 'address') || (step === 'review' && s !== 'review')
                     const isActive = step === s
                     return (
-                      <div key={s} className="flex items-center flex-1">
-                        <div className={`flex items-center gap-2 px-4 py-2.5 transition-all font-sans text-[10px] tracking-[0.1em] uppercase ${isActive ? 'text-[#C89B3C]' : isDone ? 'text-[#5B4B3F]' : 'text-[#D4C4B0]'}`}>
-                          <Icon size={13} />
+                      <div key={s} className="flex items-center flex-1 min-w-[80px]">
+                        <div className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-2.5 transition-all font-sans text-[9px] sm:text-[10px] tracking-[0.05em] sm:tracking-[0.1em] uppercase whitespace-nowrap ${isActive ? 'text-[#C89B3C]' : isDone ? 'text-[#5B4B3F]' : 'text-[#D4C4B0]'}`}>
+                          <Icon size={12} className="shrink-0" />
                           {labels[s]}
                         </div>
                         {i < 2 && <div className={`flex-1 h-px ${isDone ? 'bg-[#C89B3C]' : 'bg-[#D4C4B0]'}`} />}
@@ -547,7 +548,7 @@ export default function CheckoutPage() {
                             <div key={item.variantId ?? i} className="flex items-center gap-4">
                               <div className="w-14 h-14 bg-[#EFE3D3] flex-shrink-0 overflow-hidden">
                                 {item.image && (
-                                  <img src={item.image} alt={item.name ?? ''} className="w-full h-full object-cover" />
+                                  <Image src={item.image} alt={item.name ?? ''} width={56} height={56} className="w-full h-full object-cover" unoptimized />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -625,7 +626,7 @@ export default function CheckoutPage() {
                     {items.slice(0, 3).map((item: any, i: number) => (
                       <div key={i} className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-[#EFE3D3] overflow-hidden flex-shrink-0">
-                          {item.image && <img src={item.image} alt="" className="w-full h-full object-cover" />}
+                          {item.image && <Image src={item.image} alt={item.name ?? ''} width={48} height={48} className="w-full h-full object-cover" unoptimized />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-sans text-[11px] text-[#1E1A17] truncate">{item.name}</p>

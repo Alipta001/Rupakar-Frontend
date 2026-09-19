@@ -45,7 +45,13 @@ export default function CollectionsGrid() {
       if (wishlist.includes(id)) {
         await removeWishlistItem(id)
       } else {
-        await addWishlistItem(id)
+        const prod = catalog.find((p) => String(p.id) === String(id) || String(p._id) === String(id))
+        await addWishlistItem(id, {
+          name: prod?.name,
+          price: prod?.price,
+          image: prod?.image,
+          artisan: prod?.craft || 'Rupakar Artisan',
+        })
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),

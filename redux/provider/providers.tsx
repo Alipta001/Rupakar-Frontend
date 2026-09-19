@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Provider, useDispatch, useSelector } from 'react-redux'
 import { store } from '../store/store';
 import { setAuth, markAuthHydrated, AUTH_USER_STORAGE_KEY, fetchCurrentUserThunk } from '../slice/authSlice/authSlice'
-import { ACCESS_TOKEN_STORAGE_KEY } from '../../api/axios/axios'
+import { ACCESS_TOKEN_STORAGE_KEY, onTokenRefreshed } from '../../api/axios/axios'
 
 interface ProvidersProps {
   children: ReactNode;
@@ -15,6 +15,13 @@ function AuthHydrator({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const isAuthenticated = useSelector((state: any) => state.auth.isAuthenticated)
   const previousAuthState = useRef<boolean | null>(null)
+
+  useEffect(() => {
+    const unsub = onTokenRefreshed((newToken) => {
+      dispatch(setAuth({ token: newToken, isAuthenticated: true }))
+    })
+    return unsub
+  }, [dispatch])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

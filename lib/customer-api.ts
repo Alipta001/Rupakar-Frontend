@@ -1,5 +1,12 @@
-import { AxiosInstance } from '@/api/axios/axios'
+import { AxiosInstance, ACCESS_TOKEN_STORAGE_KEY } from '@/api/axios/axios'
 import { endPoints } from '@/api/endPoints/endPoints'
+import {
+  getGuestWishlist,
+  addToGuestWishlist,
+  removeFromGuestWishlist,
+  clearGuestWishlist,
+  GuestWishlistItem,
+} from './guest-wishlist'
 
 export type ApiEnvelope<T> = {
   success: boolean
@@ -54,18 +61,66 @@ export async function deleteAddress(addressId: string) {
   return unwrap<any>(response.data)
 }
 
-export async function fetchWishlist() {
-  const response = await AxiosInstance.get(endPoints.wishlist.list)
-  return unwrap<{ userId?: string; items?: any[] }>(response.data)
+const isClientAuthenticated = () => {
+  if (typeof window === 'undefined') return false
+  try {
+    return Boolean(window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY))
+  } catch {
+    return false
+  }
 }
 
-export async function addWishlistItem(productId: string) {
+export async function fetchWishlist() {
+  if (!isClientAuthenticated()) {
+    return { items: getGuestWishlist() }
+  }
+  try {
+    const response = await AxiosInstance.get(endPoints.wishlist.list)
+    return unwrap<{ userId?: string; items?: any[] }>(response.data)
+  } catch (error: any) {
+    if (error?.response?.status === 401) {
+      return { items: getGuestWishlist() }
+    }
+    throw error
+  }
+}
+
+export async function addWishlistItem(productId: string, itemDetails?: Partial<GuestWishlistItem>) {
+  if (!isClientAuthenticated()) {
+    const updated = addToGuestWishlist({ productId, ...itemDetails })
+    return { success: true, items: updated }
+  }
   const response = await AxiosInstance.post(`${endPoints.wishlist.list}/${productId}`)
   return unwrap<any>(response.data)
 }
 
 export async function removeWishlistItem(productId: string) {
+  if (!isClientAuthenticated()) {
+    const updated = removeFromGuestWishlist(productId)
+    return { success: true, items: updated }
+  }
   const response = await AxiosInstance.delete(`${endPoints.wishlist.list}/${productId}`)
+  return unwrap<any>(response.data)
+}
+
+export async function syncGuestWishlistToServer() {
+  const guestItems = getGuestWishlist()
+  if (guestItems.length === 0) return
+  for (const item of guestItems) {
+    try {
+      const pid = item.productId || item.id
+      if (pid) {
+        await AxiosInstance.post(`${endPoints.wishlist.list}/${pid}`)
+      }
+    } catch {
+      // Continue sync even if individual item already exists on server
+    }
+  }
+  clearGuestWishlist()
+}
+
+export async function mergeGuestCart(guestSessionId?: string) {
+  const response = await AxiosInstance.post(`${endPoints.cart.list}/merge`, { guestSessionId })
   return unwrap<any>(response.data)
 }
 

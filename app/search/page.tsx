@@ -51,7 +51,15 @@ export default function SearchPage() {
       if (wishlistSet.has(productId)) {
         await removeWishlistItem(productId)
       } else {
-        await addWishlistItem(productId)
+        const prod = results.find((p: any) => String(p.id ?? p._id) === String(productId))
+        const rawImg: any = prod?.images?.[0]
+        const image = prod?.image || (typeof rawImg === 'object' ? rawImg?.url : rawImg)
+        await addWishlistItem(productId, {
+          name: prod?.name,
+          price: prod?.price,
+          image,
+          artisan: prod?.craft || 'Rupakar Artisan',
+        })
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),

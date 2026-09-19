@@ -3,6 +3,7 @@
 import { use } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, MapPin } from 'lucide-react'
 import { fetchOrder, cancelOrder } from '@/lib/customer-api'
@@ -172,7 +173,7 @@ export default function OrderDetailPage({ params }: Props) {
             {items.map((item: any, i: number) => (
               <div key={i} className="flex items-center gap-4 py-3 border-b border-[#EFE3D3] last:border-0">
                 <div className="w-16 h-16 bg-[#EFE3D3] flex-shrink-0 overflow-hidden rounded">
-                  {item.image && <img src={item.image} alt={item.name} className="w-full h-full object-cover" />}
+                  {item.image && <Image src={item.image} alt={item.name ?? ''} width={64} height={64} className="w-full h-full object-cover" unoptimized />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-sans text-sm text-[#1E1A17] font-medium">{item.name ?? 'Artisan Product'}</p>
