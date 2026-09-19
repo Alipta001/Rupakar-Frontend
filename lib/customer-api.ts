@@ -138,11 +138,6 @@ export async function fetchPaymentConfig() {
   return unwrap<{ razorpayEnabled: boolean; mockEnabled: boolean; publicKey: string | null }>(response.data)
 }
 
-export async function simulateMockPayment(payload: { orderId: string; outcome: 'success' | 'failure' | 'cancel' }) {
-  const response = await AxiosInstance.post('/payments/mock/simulate', payload)
-  return unwrap<any>(response.data)
-}
-
 export async function confirmPayment(payload: {
   orderId: string
   razorpay_order_id: string

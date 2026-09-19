@@ -8,16 +8,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, MapPin, CreditCard, Truck, CheckCircle, Plus, X } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
-import { cancelOrder, confirmPayment, createAddress, createOrder, fetchAddresses, fetchCart, fetchOrder, fetchPaymentConfig, previewCheckout, simulateMockPayment } from '@/lib/customer-api'
+import { cancelOrder, confirmPayment, createAddress, createOrder, fetchAddresses, fetchCart, fetchPaymentConfig, previewCheckout } from '@/lib/customer-api'
 
 type Step = 'address' | 'payment' | 'review'
 
 const PAYMENT_METHODS = [
   { id: 'cod', label: 'Cash on Delivery', description: 'Pay when your order arrives', icon: '🏠' },
   { id: 'razorpay', label: 'Online Payment', description: 'UPI, Net Banking, Cards via Razorpay', icon: '💳' },
-  { id: 'mock_success', label: 'Local Mock: Success', description: 'Development-only simulated payment', icon: '🧪' },
-  { id: 'mock_failure', label: 'Local Mock: Failure', description: 'Development-only failed payment', icon: '⚠️' },
-  { id: 'mock_cancel', label: 'Local Mock: Cancel', description: 'Development-only cancelled payment', icon: '✕' },
 ]
 
 declare global {
@@ -87,10 +84,8 @@ export default function CheckoutPage() {
   })
 
   const razorpayEnabled = paymentConfig?.razorpayEnabled === true
-  const mockEnabled = paymentConfig?.mockEnabled === true
   const paymentMethods = PAYMENT_METHODS.filter((method) => {
     if (method.id === 'razorpay') return razorpayEnabled
-    if (method.id.startsWith('mock_')) return mockEnabled
     return true
   })
 
@@ -178,8 +173,6 @@ export default function CheckoutPage() {
         }
       }
 
-      const isMockPayment = paymentMethod.startsWith('mock_')
-      const effectivePaymentMethod = isMockPayment ? 'mock' : paymentMethod
       const order = await createOrder({
         ...(addressId ? { shippingAddressId: addressId } : {
           shippingAddress: {
@@ -194,16 +187,9 @@ export default function CheckoutPage() {
             country: 'India',
           }
         }),
-        paymentMethod: effectivePaymentMethod,
+        paymentMethod,
         idempotencyKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       })
-
-      if (isMockPayment) {
-        const outcome = paymentMethod.replace('mock_', '') as 'success' | 'failure' | 'cancel'
-        const result = await simulateMockPayment({ orderId: String(order?._id ?? order?.id ?? ''), outcome })
-        if (result?.status !== 'CAPTURED') throw new Error(`Local mock payment ${outcome}`)
-        return result.order ?? await fetchOrder(String(order?._id ?? order?.id ?? ''))
-      }
 
       if (paymentMethod !== 'razorpay') return order
 
