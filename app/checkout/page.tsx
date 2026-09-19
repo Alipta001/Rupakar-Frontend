@@ -9,6 +9,7 @@ import { ArrowRight, MapPin, CreditCard, Truck, CheckCircle, Plus, X } from 'luc
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { cancelOrder, confirmPayment, createAddress, createOrder, fetchAddresses, fetchCart, fetchOrder, fetchPaymentConfig, previewCheckout } from '@/lib/customer-api'
+import { refreshCheckoutAfterPaymentCancellation } from '@/lib/checkout-state'
 
 type Step = 'address' | 'payment' | 'review'
 
@@ -237,7 +238,9 @@ export default function CheckoutPage() {
         })
       } catch (error) {
         if (!paymentSubmitted) {
-          await cancelOrder(orderId).catch(() => undefined)
+          await cancelOrder(orderId)
+            .then(() => refreshCheckoutAfterPaymentCancellation(queryClient))
+            .catch(() => undefined)
         }
         throw error
       }
