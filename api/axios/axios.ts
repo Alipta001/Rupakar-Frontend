@@ -1,8 +1,18 @@
 import axios from "axios";
 
+const productionApiBaseUrl = "https://rupakar-backend.onrender.com/api/v1";
+const localApiBaseUrl = "http://localhost:4000/api/v1";
+
 const resolveApiBaseUrl = () => {
-  const configuredUrl = process.env.NEXT_API_URL ?? process.env.BASE_URL ?? "http://localhost:4000/api/v1";
-  return configuredUrl.replace(/\/$/, "");
+  const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+  if (process.env.NODE_ENV === "production") {
+    if (!configuredUrl || !/^https:\/\//i.test(configuredUrl) || /localhost|127\.0\.0\.1/i.test(configuredUrl)) {
+      return productionApiBaseUrl;
+    }
+  }
+
+  return (configuredUrl || localApiBaseUrl).replace(/\/$/, "");
 };
 
 export const BaseURL = resolveApiBaseUrl();
