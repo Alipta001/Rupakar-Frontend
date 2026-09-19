@@ -79,6 +79,9 @@ export async function fetchCart() {
 }
 
 export async function addCartItem(payload: { productId: string; variantId: string; quantity: number }) {
+  if (!payload.productId || !payload.variantId) {
+    throw new Error('A persisted product and variant are required to add an item to the cart')
+  }
   const response = await AxiosInstance.post(endPoints.cart.items, payload)
   return unwrap<any>(response.data)
 }

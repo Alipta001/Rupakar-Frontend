@@ -14,7 +14,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params
-  const product = fallbackProducts.find((item) => item.id === Number(id)) ?? fallbackProducts[0]
+  const product = fallbackProducts.find((item) => item.id === String(id)) ?? fallbackProducts[0]
   if (!product) return {}
   return {
     title: `${product.name} — Rupakar`,
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function ProductPage({ params }: Props) {
   const { id } = await params
-  const product = fallbackProducts.find((item) => item.id === Number(id)) ?? (await fetchProductBySlug(id))
+  const product = fallbackProducts.find((item) => item.id === String(id)) ?? (await fetchProductBySlug(id))
   if (!product) notFound()
 
   return (

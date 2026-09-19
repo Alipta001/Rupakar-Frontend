@@ -27,7 +27,7 @@ function ProductDetailContent({ product }: { product: Product }) {
   const [addedToBag, setAddedToBag] = useState(false)
   const [cartError, setCartError] = useState('')
 
-  const productId = String((product as any)._id ?? (product as any).productId ?? product.id)
+  const productId = String(product._id ?? '')
   const { data: wishlistData } = useQuery({
     queryKey: ['wishlist'],
     queryFn: fetchWishlist,
@@ -65,14 +65,19 @@ function ProductDetailContent({ product }: { product: Product }) {
   })
 
   const handleAddToBag = () => {
-    const productId = String((product as any)._id ?? (product as any).productId ?? product.id)
-    const variantId = String((product as any).variantId ?? (product as any).variants?.[0]?._id ?? productId)
+    const productId = String(product._id ?? '')
+    const variantId = String(product.variantId ?? (product as any).variants?.[0]?._id ?? '')
+    if (!productId || !variantId) {
+      setCartError('This product is not available for purchase right now')
+      return
+    }
     addToCartMutation.mutate({ productId, variantId, quantity })
   }
 
   useEffect(() => {
     if (searchParams.get('action') === 'add-to-cart') {
-      handleAddToBag()
+      const timer = window.setTimeout(handleAddToBag, 0)
+      return () => window.clearTimeout(timer)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])

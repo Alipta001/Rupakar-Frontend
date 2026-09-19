@@ -1,7 +1,7 @@
 import { AxiosInstance } from '@/api/axios/axios'
 
 export interface Product {
-  id: number | string
+  id: string
   _id?: string
   variantId?: string
   slug: string
@@ -27,7 +27,7 @@ export interface Product {
 
 const baseFallbackProducts: Product[] = [
   {
-    id: 1,
+    id: '1',
     slug: 'madhubani-terracotta-vase',
     name: 'Madhubani Terracotta Vase',
     craft: 'Bihar Folk Art',
@@ -49,7 +49,7 @@ const baseFallbackProducts: Product[] = [
     category: 'terracotta',
   },
   {
-    id: 2,
+    id: '2',
     slug: 'tribal-painted-bowl',
     name: 'Tribal Painted Bowl',
     craft: 'Gondi Art',
@@ -70,7 +70,7 @@ const baseFallbackProducts: Product[] = [
     category: 'terracotta',
   },
   {
-    id: 3,
+    id: '3',
     slug: 'dancing-figurine',
     name: 'Dancing Figurine',
     craft: 'Rajasthani Craft',
@@ -92,7 +92,7 @@ const baseFallbackProducts: Product[] = [
     category: 'folk-art',
   },
   {
-    id: 4,
+    id: '4',
     slug: 'hand-carved-diya-lamp',
     name: 'Hand-Carved Diya Lamp',
     craft: 'UP Pottery',
@@ -113,7 +113,7 @@ const baseFallbackProducts: Product[] = [
     category: 'decor',
   },
   {
-    id: 5,
+    id: '5',
     slug: 'patchitra-wall-plate',
     name: 'Pattachitra Wall Plate',
     craft: 'Odisha Tradition',
@@ -149,12 +149,12 @@ const normalizeProduct = (item: any): Product => {
   const primaryImage = normalizeImage(item?.image ?? item?.primaryImage ?? item?.thumbnail ?? images[0])
   const price = Number(item?.price ?? item?.variants?.[0]?.price ?? 0)
   const rawId = item?._id ?? item?.id ?? item?.productId
-  const id = typeof rawId === 'number' ? rawId : String(rawId ?? '')
+  const id = String(rawId ?? '')
   const primaryVariant = Array.isArray(item?.variants) ? item.variants[0] : null
   const variantId = item?.variantId ?? primaryVariant?._id ?? primaryVariant?.id ?? (typeof primaryVariant === 'string' ? primaryVariant : id)
 
   return {
-    id: id || 0,
+    id,
     _id: typeof rawId === 'string' ? rawId : undefined,
     variantId: variantId ? String(variantId) : undefined,
     slug: String(item?.slug ?? item?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ?? 'product'),
