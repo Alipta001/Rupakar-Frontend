@@ -25,7 +25,7 @@ export default function LoginPage() {
       // Normalize possible response shapes and update the client store immediately
       const payload = (result as any) || {}
       const nested = payload.data || {}
-      const token = payload.token ?? nested.token ?? null
+      const token = payload.accessToken ?? payload.token ?? nested.accessToken ?? nested.token ?? null
       const user = payload.user ?? nested.user ?? null
 
       if (token || user) {

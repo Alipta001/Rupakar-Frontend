@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Provider, useDispatch } from 'react-redux'
 import { store } from '../store/store';
 import { setAuth, AUTH_USER_STORAGE_KEY, fetchCurrentUserThunk } from '../slice/authSlice/authSlice'
+import { ACCESS_TOKEN_STORAGE_KEY } from '../../api/axios/axios'
 
 interface ProvidersProps {
   children: ReactNode;
@@ -16,7 +17,7 @@ function AuthHydrator({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return
 
     const savedUser = window.localStorage.getItem(AUTH_USER_STORAGE_KEY)
-    const token = store.getState().auth.token
+    const token = window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? store.getState().auth.token
 
     if (token) {
       if (savedUser) {
@@ -25,7 +26,10 @@ function AuthHydrator({ children }: { children: ReactNode }) {
           dispatch(setAuth({ token, user, isAuthenticated: true }))
         } catch (error) {
           window.localStorage.removeItem(AUTH_USER_STORAGE_KEY)
+          dispatch(setAuth({ token, isAuthenticated: true }))
         }
+      } else {
+        dispatch(setAuth({ token, isAuthenticated: true }))
       }
       // Always fetch authoritative, fresh profile data from backend
       dispatch(fetchCurrentUserThunk())

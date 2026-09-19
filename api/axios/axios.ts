@@ -16,6 +16,7 @@ const resolveApiBaseUrl = () => {
 };
 
 export const BaseURL = resolveApiBaseUrl();
+export const ACCESS_TOKEN_STORAGE_KEY = "rupakar_access_token";
 
 export const AxiosInstance = axios.create({
   baseURL: BaseURL,
@@ -30,6 +31,14 @@ let refreshPromise: Promise<string | null> | null = null;
 
 export const setAccessToken = (token: string | null) => {
   accessToken = token ?? "";
+
+  if (typeof window !== "undefined") {
+    if (accessToken) {
+      window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken);
+    } else {
+      window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+    }
+  }
 };
 
 const getGuestSessionId = () => {
