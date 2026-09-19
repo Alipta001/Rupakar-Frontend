@@ -26,6 +26,16 @@ export const AxiosInstance = axios.create({
 let accessToken = "";
 let refreshPromise: Promise<string | null> | null = null;
 
+const getStoredAccessToken = () => {
+  if (typeof window === "undefined") return "";
+
+  try {
+    return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+};
+
 export const setAccessToken = (token: string | null) => {
   accessToken = token ?? "";
 
@@ -54,6 +64,10 @@ const getGuestSessionId = () => {
 };
 
 AxiosInstance.interceptors.request.use((config) => {
+  if (!accessToken) {
+    accessToken = getStoredAccessToken();
+  }
+
   if (accessToken && config.headers) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
