@@ -55,12 +55,8 @@ export async function deleteAddress(addressId: string) {
 }
 
 export async function fetchWishlist() {
-  try {
-    const response = await AxiosInstance.get(endPoints.wishlist.list)
-    return unwrap<{ userId?: string; items?: any[] }>(response.data)
-  } catch {
-    return { items: [] }
-  }
+  const response = await AxiosInstance.get(endPoints.wishlist.list)
+  return unwrap<{ userId?: string; items?: any[] }>(response.data)
 }
 
 export async function addWishlistItem(productId: string) {

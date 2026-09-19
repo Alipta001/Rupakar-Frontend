@@ -51,6 +51,7 @@ const normalizeUser = (rawUser: any): User | null => {
 
 export interface AuthState {
   isAuthenticated: boolean;
+  hydrated: boolean;
   data: User | null;
   user: User | null;
   token: string | null;
@@ -61,6 +62,7 @@ export interface AuthState {
 
 const initialState: AuthState = {
   isAuthenticated: false,
+  hydrated: false,
   data: null,
   user: null,
   token: null,
@@ -218,6 +220,9 @@ export const authSlice = createSlice({
       state.error = null;
       state.successMessage = null;
     },
+    markAuthHydrated: (state) => {
+      state.hydrated = true;
+    },
     setAuth: (
       state,
       action: PayloadAction<{ token?: string | null; user?: any; isAuthenticated?: boolean; successMessage?: string; error?: string }>,
@@ -331,5 +336,5 @@ export const authSlice = createSlice({
   },
 });
 
-export const { clearAuthStatus, updateProfile, setAuth } = authSlice.actions;
+export const { clearAuthStatus, markAuthHydrated, updateProfile, setAuth } = authSlice.actions;
 export default authSlice;

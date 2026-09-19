@@ -1,6 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSelector } from 'react-redux'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
@@ -36,11 +37,12 @@ const normalizeWishlistItem = (entry: any) => {
 
 export default function WishlistPage() {
   const queryClient = useQueryClient()
+  const authHydrated = useSelector((state: any) => state.auth.hydrated)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['wishlist'],
     queryFn: fetchWishlist,
-    retry: false,
+    enabled: authHydrated,
   })
 
   const items = Array.isArray(data?.items) ? data.items.map(normalizeWishlistItem) : Array.isArray(data) ? data.map(normalizeWishlistItem) : []
@@ -77,6 +79,10 @@ export default function WishlistPage() {
 
           {isLoading ? (
             <div className="rounded-lg border border-[#D4C4B0] bg-white/60 p-10 text-center text-[#5B4B3F] font-sans text-sm">Loading your saved pieces…</div>
+          ) : isError ? (
+            <div className="rounded-lg border border-dashed border-[#D4C4B0] bg-white/30 p-10 text-center text-[#7A1F1F] font-sans text-sm">
+              We could not load your wishlist. Please refresh or sign in again.
+            </div>
           ) : items.length === 0 ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center max-w-xl mx-auto">
               <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#EFE3D3] flex items-center justify-center">

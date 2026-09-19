@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Provider, useDispatch, useSelector } from 'react-redux'
 import { store } from '../store/store';
-import { setAuth, AUTH_USER_STORAGE_KEY, fetchCurrentUserThunk } from '../slice/authSlice/authSlice'
+import { setAuth, markAuthHydrated, AUTH_USER_STORAGE_KEY, fetchCurrentUserThunk } from '../slice/authSlice/authSlice'
 import { ACCESS_TOKEN_STORAGE_KEY } from '../../api/axios/axios'
 
 interface ProvidersProps {
@@ -47,6 +47,8 @@ function AuthHydrator({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] })
       dispatch(fetchCurrentUserThunk())
     }
+
+    dispatch(markAuthHydrated())
 
     return () => window.removeEventListener('rupakar:auth-expired', handleAuthExpired)
   }, [dispatch, queryClient])

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSelector } from 'react-redux'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ShoppingBag, ArrowRight, Trash2, Plus, Minus } from 'lucide-react'
@@ -10,9 +11,11 @@ import { clearCart, fetchCart, removeCartItem, updateCartItem } from '@/lib/cust
 
 export default function CartPage() {
   const queryClient = useQueryClient()
-  const { data, isLoading } = useQuery({
+  const authHydrated = useSelector((state: any) => state.auth.hydrated)
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['cart'],
     queryFn: fetchCart,
+    enabled: authHydrated,
   })
 
   const items: any[] = Array.isArray(data?.items) ? data.items : []
@@ -60,6 +63,10 @@ export default function CartPage() {
         <div className="max-w-5xl mx-auto px-6 py-20">
           {isLoading ? (
             <div className="rounded-lg border border-[#D4C4B0] bg-white/60 p-10 text-center text-[#5B4B3F] font-sans text-sm">Loading your cart…</div>
+          ) : isError ? (
+            <div className="rounded-lg border border-dashed border-[#D4C4B0] bg-white/30 p-10 text-center text-[#7A1F1F] font-sans text-sm">
+              We could not load your cart. Please refresh or sign in again.
+            </div>
           ) : items.length === 0 ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center">
               <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#EFE3D3] flex items-center justify-center">

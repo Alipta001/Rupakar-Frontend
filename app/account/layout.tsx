@@ -221,7 +221,7 @@ export default function AccountLayout({
   const pathname = usePathname()
   const router = useRouter()
   const dispatch = useDispatch<any>()
-  const { data: user, isAuthenticated } = useSelector((state: any) => state.auth)
+  const { data: user, isAuthenticated, hydrated: authHydrated } = useSelector((state: any) => state.auth)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
@@ -234,7 +234,7 @@ export default function AccountLayout({
   }, [])
 
   useEffect(() => {
-    if (!isMounted) return undefined
+    if (!isMounted || !authHydrated) return undefined
     if (isAuthenticated) {
       return undefined
     }
@@ -252,7 +252,7 @@ export default function AccountLayout({
     return () => {
       cancelled = true
     }
-  }, [dispatch, isAuthenticated, isMounted, router])
+  }, [authHydrated, dispatch, isAuthenticated, isMounted, router])
 
   const handleLogout = () => {
     dispatch(authLogout())
@@ -260,7 +260,7 @@ export default function AccountLayout({
   }
 
   // Render a clean neutral shell structure during SSR to match the client perfectly
-  if (!isMounted || (!isAuthenticated && !authChecked)) {
+  if (!isMounted || !authHydrated || (!isAuthenticated && !authChecked)) {
     return (
       <main className="min-h-screen bg-[#F8F4EE] text-[#1E1A17]">
         <Navbar />

@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useSelector } from 'react-redux'
 import { motion } from 'framer-motion'
 import { Truck, Package, CheckCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
@@ -18,9 +19,11 @@ const statusConfig = {
 } as const
 
 export default function OrdersPage() {
+  const authHydrated = useSelector((state: any) => state.auth.hydrated)
   const { data, isLoading, isError } = useQuery({
     queryKey: ['orders'],
     queryFn: fetchOrders,
+    enabled: authHydrated,
     retry: false,
   })
 
