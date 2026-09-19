@@ -220,7 +220,7 @@ export const authSlice = createSlice({
     },
     setAuth: (
       state,
-      action: PayloadAction<{ token?: string; user?: any; isAuthenticated?: boolean; successMessage?: string; error?: string }>,
+      action: PayloadAction<{ token?: string | null; user?: any; isAuthenticated?: boolean; successMessage?: string; error?: string }>,
     ) => {
       const payload = action.payload;
       if (payload.user !== undefined) {

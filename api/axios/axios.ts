@@ -44,6 +44,7 @@ export const setAccessToken = (token: string | null) => {
       window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken);
     } else {
       window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem("auth_user");
     }
   }
 };
@@ -101,6 +102,9 @@ AxiosInstance.interceptors.response.use(
           return newAccessToken;
         }).catch(() => {
           setAccessToken(null);
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("rupakar:auth-expired"));
+          }
           return null;
         }).finally(() => {
           refreshPromise = null;
@@ -114,6 +118,9 @@ AxiosInstance.interceptors.response.use(
         }
       } catch {
         setAccessToken(null);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("rupakar:auth-expired"));
+        }
       }
     }
 

@@ -18,7 +18,7 @@ const statusConfig = {
 } as const
 
 export default function OrdersPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['orders'],
     queryFn: fetchOrders,
     retry: false,
@@ -45,6 +45,10 @@ export default function OrdersPage() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.1 }} className="space-y-4">
         {isLoading ? (
           <div className="rounded-lg border border-[#C89B3C]/20 bg-white/70 p-6 text-sm text-[#5B4B3F]">Loading your orders…</div>
+        ) : isError ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12 rounded-lg border border-dashed border-[#D4C4B0] bg-white/30">
+            <p className="text-[#7A1F1F] font-sans text-sm tracking-[0.05em]">Your session has expired. Please sign in again.</p>
+          </motion.div>
         ) : normalizedOrders.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="text-center py-12 rounded-lg border border-dashed border-[#D4C4B0] bg-white/30">
             <Package size={48} className="mx-auto mb-4 text-[#C89B3C]/40" strokeWidth={1.5} />

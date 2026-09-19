@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, MapPin, CreditCard, Truck, CheckCircle, Plus, X } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
-import { cancelOrder, confirmPayment, createAddress, createOrder, fetchAddresses, fetchCart, fetchPaymentConfig, previewCheckout } from '@/lib/customer-api'
+import { cancelOrder, confirmPayment, createAddress, createOrder, fetchAddresses, fetchCart, fetchOrder, fetchPaymentConfig, previewCheckout } from '@/lib/customer-api'
 
 type Step = 'address' | 'payment' | 'review'
 
@@ -202,6 +202,7 @@ export default function CheckoutPage() {
         throw new Error('Online payment is not available for this order')
       }
 
+      let paymentSubmitted = false
       try {
         const Razorpay = await loadRazorpayCheckout()
         await new Promise<void>((resolve, reject) => {
@@ -213,9 +214,19 @@ export default function CheckoutPage() {
             description: 'Handcrafted artisan order',
             order_id: payment.providerOrderId,
             handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+              paymentSubmitted = true
+              let confirmationError: unknown
               try {
-                await confirmPayment({ orderId, ...response })
-                resolve()
+                for (let attempt = 0; attempt < 2; attempt += 1) {
+                  try {
+                    await confirmPayment({ orderId, ...response })
+                    resolve()
+                    return
+                  } catch (error) {
+                    confirmationError = error
+                  }
+                }
+                reject(confirmationError)
               } catch (error) {
                 reject(error)
               }
@@ -225,11 +236,15 @@ export default function CheckoutPage() {
           checkout.open()
         })
       } catch (error) {
-        await cancelOrder(orderId).catch(() => undefined)
+        if (!paymentSubmitted) {
+          await cancelOrder(orderId).catch(() => undefined)
+        }
         throw error
       }
 
-      return order
+      return paymentMethod === 'razorpay'
+        ? await fetchOrder(orderId)
+        : order
     },
     onSuccess: (data: any) => {
       const orderId = data?.orderNumber ?? data?._id ?? data?.id ?? data?.orderId ?? 'new'

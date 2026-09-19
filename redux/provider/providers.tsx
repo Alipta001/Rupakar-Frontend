@@ -1,7 +1,7 @@
 "use client"
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactNode, useEffect, useState } from 'react';
-import { Provider, useDispatch } from 'react-redux'
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { Provider, useDispatch, useSelector } from 'react-redux'
 import { store } from '../store/store';
 import { setAuth, AUTH_USER_STORAGE_KEY, fetchCurrentUserThunk } from '../slice/authSlice/authSlice'
 import { ACCESS_TOKEN_STORAGE_KEY } from '../../api/axios/axios'
@@ -12,9 +12,19 @@ interface ProvidersProps {
 
 function AuthHydrator({ children }: { children: ReactNode }) {
   const dispatch = useDispatch<any>()
+  const queryClient = useQueryClient()
+  const isAuthenticated = useSelector((state: any) => state.auth.isAuthenticated)
+  const previousAuthState = useRef<boolean | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+
+    const handleAuthExpired = () => {
+      dispatch(setAuth({ token: null, user: null, isAuthenticated: false }))
+      queryClient.clear()
+    }
+
+    window.addEventListener('rupakar:auth-expired', handleAuthExpired)
 
     const savedUser = window.localStorage.getItem(AUTH_USER_STORAGE_KEY)
     const token = window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? store.getState().auth.token
@@ -32,9 +42,30 @@ function AuthHydrator({ children }: { children: ReactNode }) {
         dispatch(setAuth({ token, isAuthenticated: true }))
       }
       // Always fetch authoritative, fresh profile data from backend
+      queryClient.invalidateQueries({ queryKey: ['cart'] })
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
       dispatch(fetchCurrentUserThunk())
     }
-  }, [dispatch])
+
+    return () => window.removeEventListener('rupakar:auth-expired', handleAuthExpired)
+  }, [dispatch, queryClient])
+
+  useEffect(() => {
+    if (previousAuthState.current === null) {
+      previousAuthState.current = isAuthenticated
+      return
+    }
+
+    if (previousAuthState.current && !isAuthenticated) {
+      queryClient.clear()
+    } else if (!previousAuthState.current && isAuthenticated) {
+      queryClient.invalidateQueries({ queryKey: ['cart'] })
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+      queryClient.invalidateQueries({ queryKey: ['wishlist'] })
+    }
+
+    previousAuthState.current = isAuthenticated
+  }, [isAuthenticated, queryClient])
 
   return <>{children}</>
 }
