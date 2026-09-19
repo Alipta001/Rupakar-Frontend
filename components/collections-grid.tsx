@@ -67,7 +67,8 @@ export default function CollectionsGrid() {
 
   const handleAddToBag = async (product: Product) => {
     const productId = String(product._id ?? product.id)
-    const variantId = String(product.variantId ?? product.id)
+    const variantId = product.variantId ? String(product.variantId) : ''
+    if (!productId || !variantId) return
     await addToCartMutation.mutateAsync({
       productId,
       variantId,

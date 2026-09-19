@@ -114,6 +114,7 @@ export default function CheckoutPage() {
   const total = Number(summary?.total ?? 0)
   const previewError = previewQuery.isError
   const previewLoading = previewQuery.isLoading || previewQuery.isFetching
+  const previewErrorMessage = (previewQuery.error as any)?.response?.data?.error?.message ?? 'Unable to calculate the current total.'
 
   const saveAddressMutation = useMutation({
     mutationFn: async () => {
@@ -547,7 +548,7 @@ export default function CheckoutPage() {
                           )}
                           {previewError && (
                             <div className="flex items-center justify-between gap-3 text-[#7A1F1F] text-xs">
-                              <span>Unable to calculate the current total.</span>
+                              <span>{previewErrorMessage}</span>
                               <button type="button" onClick={() => previewQuery.refetch()} disabled={previewLoading} className="underline">Retry</button>
                             </div>
                           )}

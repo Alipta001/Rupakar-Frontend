@@ -151,7 +151,7 @@ const normalizeProduct = (item: any): Product => {
   const rawId = item?._id ?? item?.id ?? item?.productId
   const id = String(rawId ?? '')
   const primaryVariant = Array.isArray(item?.variants) ? item.variants[0] : null
-  const variantId = item?.variantId ?? primaryVariant?._id ?? primaryVariant?.id ?? (typeof primaryVariant === 'string' ? primaryVariant : id)
+  const variantId = item?.variantId ?? primaryVariant?._id ?? primaryVariant?.id ?? (typeof primaryVariant === 'string' ? primaryVariant : undefined)
 
   return {
     id,

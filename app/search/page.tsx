@@ -56,7 +56,8 @@ export default function SearchPage() {
 
   const handleAddToCart = useCallback((product: any) => {
     const productId = String(product.id ?? product._id)
-    const variantId = String(product.variantId ?? productId)
+    const variantId = product.variantId ? String(product.variantId) : ''
+    if (!productId || !variantId) return
     addToCartMutation.mutate({ productId, variantId, quantity: 1 })
   }, [addToCartMutation])
 
