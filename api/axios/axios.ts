@@ -6,7 +6,8 @@ const resolveApiBaseUrl = () => {
   const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
   if (process.env.NODE_ENV === "production") {
-    return productionApiBaseUrl;
+    // Keep auth requests same-origin so the HttpOnly refresh cookie is first-party.
+    return "/api/v1";
   }
 
   return (configuredUrl || productionApiBaseUrl).replace(/\/$/, "");
