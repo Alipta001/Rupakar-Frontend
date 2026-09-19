@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const resolveApiBaseUrl = () => {
-  const configuredUrl = process.env.NEXT_PUBLIC_API_URL ?? process.env.BASE_URL ?? "http://localhost:4000/api/v1";
+  const configuredUrl = process.env.NEXT_API_URL ?? process.env.BASE_URL ?? "http://localhost:4000/api/v1";
   return configuredUrl.replace(/\/$/, "");
 };
 
