@@ -32,13 +32,18 @@ function loadAxiosModule(refreshRequest) {
   const originalLoad = Module._load
   const originalWindow = global.window
   const storage = new Map()
-  global.window = {
+  const events = []
+  const mockWindow = {
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value),
       removeItem: (key) => storage.delete(key),
     },
+    dispatchEvent: (event) => {
+      events.push(event.type)
+    },
   }
+  global.window = mockWindow
   Module._load = function load(request, parent, isMain) {
     if (request === 'axios') return axios
     return originalLoad.call(this, request, parent, isMain)
@@ -49,10 +54,12 @@ function loadAxiosModule(refreshRequest) {
     moduleInstance.filename = axiosSourcePath
     moduleInstance.paths = Module._nodeModulePaths(path.dirname(axiosSourcePath))
     moduleInstance._compile(compiled, axiosSourcePath)
-    return { client, exports: moduleInstance.exports }
+    return { client, exports: moduleInstance.exports, events, restoreWindow: () => {
+      Module._load = originalLoad
+      global.window = originalWindow
+    } }
   } finally {
     Module._load = originalLoad
-    global.window = originalWindow
   }
 }
 
@@ -94,4 +101,40 @@ test('shares one refresh request across simultaneous 401 responses', async () =>
     'Bearer fresh-access-token',
     'Bearer fresh-access-token',
   ])
+})
+
+test('does not fire a logout event when refresh succeeds', async () => {
+  const { client, events, restoreWindow } = loadAxiosModule(async () => ({
+    data: { data: { accessToken: 'fresh-access-token' } },
+  }))
+
+  try {
+    await client.reject({
+      config: { url: '/wishlist', headers: {} },
+      response: { status: 401 },
+    })
+
+    assert.deepEqual(events, [])
+    assert.equal(client.retriedRequests[0].headers.Authorization, 'Bearer fresh-access-token')
+  } finally {
+    restoreWindow()
+  }
+})
+
+test('fires auth-expired only when refresh ultimately fails', async () => {
+  const { client, events, restoreWindow } = loadAxiosModule(async () => {
+    throw new Error('refresh failed')
+  })
+
+  try {
+    const err = await client.reject({
+      config: { url: '/orders', headers: {} },
+      response: { status: 401 },
+    }).catch((error) => error)
+
+    assert.equal(err.response.status, 401)
+    assert.deepEqual(events, ['rupakar:auth-expired'])
+  } finally {
+    restoreWindow()
+  }
 })

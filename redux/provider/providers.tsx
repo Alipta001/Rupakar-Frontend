@@ -41,7 +41,7 @@ function AuthHydrator({ children }: { children: ReactNode }) {
       } else {
         dispatch(setAuth({ token, isAuthenticated: true }))
       }
-      // Always fetch authoritative, fresh profile data from backend
+
       queryClient.invalidateQueries({ queryKey: ['cart'] })
       queryClient.invalidateQueries({ queryKey: ['orders'] })
       queryClient.invalidateQueries({ queryKey: ['wishlist'] })

@@ -50,6 +50,32 @@ export const setAccessToken = (token: string | null) => {
   }
 };
 
+const triggerAuthExpired = () => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event("rupakar:auth-expired"));
+};
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  try {
+    const response = await axios.post(`${BaseURL}/auth/refresh`, {}, {
+      headers: { "Content-Type": "application/json" },
+      withCredentials: true,
+    });
+
+    const payload = response.data?.data ?? response.data ?? {};
+    const newAccessToken = payload.accessToken ?? payload.token ?? null;
+
+    setAccessToken(newAccessToken);
+    return newAccessToken;
+  } catch {
+    setAccessToken(null);
+    triggerAuthExpired();
+    return null;
+  } finally {
+    refreshPromise = null;
+  }
+};
+
 const getGuestSessionId = () => {
   if (typeof window === "undefined") return "";
   let id = "";
@@ -84,34 +110,21 @@ AxiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const isAuthEndpoint = originalRequest?.url?.includes("/auth/") || originalRequest?.url?.includes("auth/");
+
     // Skip token refresh logic for auth endpoints (login, register, refresh, etc.)
-    if (!originalRequest || originalRequest.url?.includes("/auth/")) {
+    if (!originalRequest || isAuthEndpoint) {
       return Promise.reject(error);
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      try {
-        refreshPromise ??= axios.post(`${BaseURL}/auth/refresh`, {}, {
-          headers: { "Content-Type": "application/json" },
-          withCredentials: true,
-        }).then((response) => {
-          const payload = response.data?.data ?? response.data ?? {};
-          const newAccessToken = payload.accessToken ?? payload.token ?? null;
-          setAccessToken(newAccessToken);
-          return newAccessToken;
-        }).catch(() => {
-          setAccessToken(null);
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event("rupakar:auth-expired"));
-          }
-          return null;
-        }).finally(() => {
-          refreshPromise = null;
-        });
+      refreshPromise ??= refreshAccessToken();
 
+      try {
         const newAccessToken = await refreshPromise;
+
         if (newAccessToken) {
           originalRequest.headers = originalRequest.headers ?? {};
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -119,9 +132,7 @@ AxiosInstance.interceptors.response.use(
         }
       } catch {
         setAccessToken(null);
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new Event("rupakar:auth-expired"));
-        }
+        triggerAuthExpired();
       }
     }
 
