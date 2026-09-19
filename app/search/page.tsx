@@ -9,7 +9,8 @@ import { Search as SearchIcon, ShoppingBag, Heart, Star, X } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { fetchProducts, type Product } from '@/lib/products-api'
-import { addCartItem, addWishlistItem, removeWishlistItem } from '@/lib/customer-api'
+import { addCartItem, addWishlistItem, fetchCart, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState<T>(value)
@@ -25,7 +26,11 @@ const SUGGESTED_SEARCHES = ['Terracotta', 'Madhubani', 'Pottery', 'Handloom', 'D
 export default function SearchPage() {
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
-  const [wishlistSet, setWishlistSet] = useState<Set<string>>(new Set())
+  const { data: cartData } = useQuery({ queryKey: ['cart'], queryFn: fetchCart, retry: false })
+  const { data: wishlistData } = useQuery({ queryKey: ['wishlist'], queryFn: fetchWishlist, retry: false })
+  const wishlistSet = new Set(
+    Array.isArray(wishlistData?.items) ? wishlistData.items.map((item: any) => String(item.productId ?? '')).filter(Boolean) : [],
+  )
   const debouncedQuery = useDebounce(query, 300)
 
   const { data: results = [], isLoading, isFetching } = useQuery<Product[]>({
@@ -45,10 +50,8 @@ export default function SearchPage() {
     mutationFn: async (productId: string) => {
       if (wishlistSet.has(productId)) {
         await removeWishlistItem(productId)
-        setWishlistSet((prev) => { const s = new Set(prev); s.delete(productId); return s })
       } else {
         await addWishlistItem(productId)
-        setWishlistSet((prev) => new Set([...prev, productId]))
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
@@ -56,7 +59,7 @@ export default function SearchPage() {
 
   const handleAddToCart = useCallback((product: any) => {
     const productId = String(product.id ?? product._id)
-    const variantId = product.variantId ? String(product.variantId) : ''
+    const variantId = getProductVariantId(product)
     if (!productId || !variantId) return
     addToCartMutation.mutate({ productId, variantId, quantity: 1 })
   }, [addToCartMutation])
@@ -206,6 +209,7 @@ export default function SearchPage() {
                               <motion.button
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleAddToCart(product)}
+                                disabled={hasCartVariant(cartData, getProductVariantId(product)) || addToCartMutation.isPending}
                                 className="flex-1 bg-[#1E1A17] text-[#F8F4EE] py-2.5 font-sans text-[9px] tracking-[0.15em] uppercase flex items-center justify-center gap-1.5 hover:bg-[#6B3E26] transition-colors"
                               >
                                 <ShoppingBag size={11} />

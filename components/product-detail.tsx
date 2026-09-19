@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, ShoppingBag, Star, Shield, Truck, RotateCcw, Award, Check } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Product } from '@/lib/products-api'
-import { addCartItem, addWishlistItem, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { addCartItem, addWishlistItem, fetchCart, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 import BestSellers from './best-sellers'
 
 const guarantees = [
@@ -24,10 +25,11 @@ function ProductDetailContent({ product }: { product: Product }) {
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [activeTab, setActiveTab] = useState<'story' | 'details' | 'care'>('story')
-  const [addedToBag, setAddedToBag] = useState(false)
   const [cartError, setCartError] = useState('')
 
   const productId = String(product._id ?? '')
+  const variantId = getProductVariantId(product)
+  const { data: cartData } = useQuery({ queryKey: ['cart'], queryFn: fetchCart, retry: false })
   const { data: wishlistData } = useQuery({
     queryKey: ['wishlist'],
     queryFn: fetchWishlist,
@@ -42,9 +44,7 @@ function ProductDetailContent({ product }: { product: Product }) {
       addCartItem(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] })
-      setAddedToBag(true)
       setCartError('')
-      setTimeout(() => setAddedToBag(false), 2500)
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message ?? err?.message ?? 'Could not add to cart'
@@ -66,7 +66,6 @@ function ProductDetailContent({ product }: { product: Product }) {
 
   const handleAddToBag = () => {
     const productId = String(product._id ?? '')
-    const variantId = String(product.variantId ?? (product as any).variants?.[0]?._id ?? '')
     if (!productId || !variantId) {
       setCartError('This product is not available for purchase right now')
       return
@@ -243,19 +242,19 @@ function ProductDetailContent({ product }: { product: Product }) {
             <div className="flex gap-3 mb-3">
               <motion.button
                 onClick={handleAddToBag}
-                disabled={addToCartMutation.isPending}
-                whileHover={{ scale: addToCartMutation.isPending ? 1 : 1.02 }}
+                disabled={addToCartMutation.isPending || hasCartVariant(cartData, variantId)}
+                whileHover={{ scale: addToCartMutation.isPending || hasCartVariant(cartData, variantId) ? 1 : 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className={`flex-1 flex items-center justify-center gap-2 py-4 font-sans text-xs tracking-[0.2em] uppercase transition-all duration-300 ${
-                  addedToBag
+                  hasCartVariant(cartData, variantId)
                     ? 'bg-[#2A5E3A] text-[#F8F4EE]'
                     : addToCartMutation.isPending
                     ? 'bg-[#3A2418] text-[#C89B3C] cursor-not-allowed'
                     : 'bg-[#1E1A17] text-[#F8F4EE] hover:bg-[#6B3E26]'
                 }`}
               >
-                {addedToBag ? <Check size={14} /> : <ShoppingBag size={14} />}
-                {addedToBag ? 'Added to Bag!' : addToCartMutation.isPending ? 'Adding…' : 'Add to Bag'}
+                {hasCartVariant(cartData, variantId) ? <Check size={14} /> : <ShoppingBag size={14} />}
+                {hasCartVariant(cartData, variantId) ? 'In Bag' : addToCartMutation.isPending ? 'Adding…' : 'Add to Bag'}
               </motion.button>
               <motion.button
                 onClick={() => wishlistMutation.mutate()}

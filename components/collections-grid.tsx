@@ -6,7 +6,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, ShoppingBag, Star, SlidersHorizontal } from 'lucide-react'
-import { addCartItem, addWishlistItem, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { addCartItem, addWishlistItem, fetchCart, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 import { fetchProducts, fallbackProducts, type Product } from '@/lib/products-api'
 
 const categories = ['All', 'Terracotta', 'Folk Art', 'Decor', 'Jewelry']
@@ -22,6 +23,7 @@ export default function CollectionsGrid() {
     queryFn: fetchWishlist,
     retry: false,
   })
+  const { data: cartData } = useQuery({ queryKey: ['cart'], queryFn: fetchCart, retry: false })
 
   const wishlist = (Array.isArray(wishlistData?.items) ? wishlistData.items : []).map((item: any) =>
     String(item?.productId ?? item?.product?._id ?? item?.product?.id ?? item?._id ?? ''),
@@ -67,7 +69,7 @@ export default function CollectionsGrid() {
 
   const handleAddToBag = async (product: Product) => {
     const productId = String(product._id ?? product.id)
-    const variantId = product.variantId ? String(product.variantId) : ''
+    const variantId = getProductVariantId(product)
     if (!productId || !variantId) return
     await addToCartMutation.mutateAsync({
       productId,
@@ -184,11 +186,12 @@ export default function CollectionsGrid() {
                       <button
                         onClick={(e) => {
                           e.preventDefault()
-                          void handleAddToBag(product)
+                          if (!hasCartVariant(cartData, getProductVariantId(product))) void handleAddToBag(product)
                         }}
+                        disabled={hasCartVariant(cartData, getProductVariantId(product)) || addToCartMutation.isPending}
                         className="w-full bg-[#1E1A17] text-[#F8F4EE] py-3 font-sans text-[9px] tracking-[0.2em] uppercase hover:bg-[#C89B3C] hover:text-[#1E1A17] transition-colors duration-300 flex items-center justify-center gap-2"
                       >
-                        <ShoppingBag size={11} /> Add to Bag
+                        <ShoppingBag size={11} /> {hasCartVariant(cartData, getProductVariantId(product)) ? 'In Bag' : 'Add to Bag'}
                       </button>
                     </div>
                   </div>

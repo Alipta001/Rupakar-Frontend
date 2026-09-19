@@ -9,7 +9,8 @@ import { Filter, SlidersHorizontal, Heart, ShoppingBag, Star, X } from 'lucide-r
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { fetchProducts, fallbackProducts, type Product } from '@/lib/products-api'
-import { addCartItem, addWishlistItem, removeWishlistItem, fetchCategories } from '@/lib/customer-api'
+import { addCartItem, addWishlistItem, fetchCart, fetchCategories, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 
 const SORT_OPTIONS = [
   { value: '', label: 'Featured' },
@@ -32,7 +33,11 @@ export default function ProductsPage() {
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
   const [showFilters, setShowFilters] = useState(false)
-  const [wishlistSet, setWishlistSet] = useState<Set<string>>(new Set())
+  const { data: cartData } = useQuery({ queryKey: ['cart'], queryFn: fetchCart, retry: false })
+  const { data: wishlistData } = useQuery({ queryKey: ['wishlist'], queryFn: fetchWishlist, retry: false })
+  const wishlistSet = new Set(
+    Array.isArray(wishlistData?.items) ? wishlistData.items.map((item: any) => String(item.productId ?? '')).filter(Boolean) : [],
+  )
 
   const { data: categoriesData = [] } = useQuery({
     queryKey: ['categories'],
@@ -63,10 +68,8 @@ export default function ProductsPage() {
     mutationFn: async (productId: string) => {
       if (wishlistSet.has(productId)) {
         await removeWishlistItem(productId)
-        setWishlistSet((prev) => { const s = new Set(prev); s.delete(productId); return s })
       } else {
         await addWishlistItem(productId)
-        setWishlistSet((prev) => new Set([...prev, productId]))
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
@@ -74,7 +77,7 @@ export default function ProductsPage() {
 
   const handleAddToCart = useCallback((product: any) => {
     const productId = String(product._id ?? '')
-    const variantId = String(product.variantId ?? product.variants?.[0]?._id ?? '')
+    const variantId = getProductVariantId(product)
     if (!productId || !variantId) return
     addToCartMutation.mutate({ productId, variantId, quantity: 1 })
   }, [addToCartMutation])
@@ -302,11 +305,12 @@ export default function ProductsPage() {
                         <motion.button
                           whileTap={{ scale: 0.95 }}
                           onClick={() => handleAddToCart(product)}
+                          disabled={hasCartVariant(cartData, getProductVariantId(product)) || addToCartMutation.isPending}
                           className="flex-1 bg-[#1E1A17] text-[#F8F4EE] py-2.5 font-sans text-[9px] tracking-[0.15em] uppercase flex items-center justify-center gap-1.5 hover:bg-[#6B3E26] transition-colors"
                           aria-label={`Add ${product.name} to cart`}
                         >
                           <ShoppingBag size={11} />
-                          Add to Bag
+                          {hasCartVariant(cartData, getProductVariantId(product)) ? 'In Bag' : 'Add to Bag'}
                         </motion.button>
                         <motion.button
                           whileTap={{ scale: 0.9 }}
