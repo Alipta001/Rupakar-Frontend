@@ -1,7 +1,6 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ShoppingBag, ArrowRight, Trash2, Plus, Minus } from 'lucide-react'
@@ -18,10 +17,8 @@ export default function CartPage() {
 
   const items: any[] = Array.isArray(data?.items) ? data.items : []
 
-  const subtotal = useMemo(
-    () => items.reduce((sum: number, item: any) => sum + Number(item?.price ?? item?.unitPrice ?? 0) * Number(item?.quantity ?? 1), 0),
-    [items],
-  )
+  const subtotal = Number(data?.subtotal ?? 0)
+  const total = Number(data?.total ?? subtotal)
 
   const removeMutation = useMutation({
     mutationFn: (variantId: string) => removeCartItem(variantId),
@@ -137,11 +134,11 @@ export default function CartPage() {
                   </div>
                   <div className="flex justify-between pb-3 border-b border-[#D4C4B0]">
                     <span>Shipping</span>
-                    <span>{subtotal >= 1500 ? 'Free' : '₹200'}</span>
+                    <span>Calculated at checkout</span>
                   </div>
                   <div className="flex justify-between pt-2 text-[#1E1A17] font-bold text-base">
                     <span>Total</span>
-                    <span>₹{(subtotal + (subtotal >= 1500 ? 0 : 200)).toLocaleString()}</span>
+                    <span>₹{total.toLocaleString()}</span>
                   </div>
                 </div>
 
