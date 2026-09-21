@@ -1,20 +1,18 @@
 import axios from "axios";
 
-const productionApiBaseUrl = "https://rupakar-backend.onrender.com/api/v1";
+const defaultProductionServerApiUrl = "https://rupakar-backend.onrender.com/api/v1";
+const defaultLocalServerApiUrl = "http://localhost:4000/api/v1";
 
 const resolveApiBaseUrl = () => {
-  const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-
-  if (process.env.NODE_ENV === "production") {
-    // Keep auth requests same-origin so the HttpOnly refresh cookie is first-party.
-    return "/api/v1";
+  if (typeof window === "undefined") {
+    const serverUrl = process.env.SERVER_API_URL?.trim();
+    if (serverUrl && !serverUrl.includes(",")) {
+      return serverUrl.replace(/\/$/, "");
+    }
+    return defaultProductionServerApiUrl;
   }
 
-  if (configuredUrl && !configuredUrl.includes(",")) {
-    return configuredUrl.replace(/\/$/, "");
-  }
-
-  return "http://localhost:4000/api/v1";
+  return "/api/v1";
 };
 
 export const BaseURL = resolveApiBaseUrl();
