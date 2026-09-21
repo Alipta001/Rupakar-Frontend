@@ -639,6 +639,7 @@ import { toast } from '@/hooks/use-toast'
 import { AuthShell } from '@/components/auth-shell'
 import { Button } from '@/components/ui/button'
 import { verifyRegisterOtp, forgotPassword, clearAuthStatus } from '@/redux/slice/authSlice/authSlice'
+import { getSafeReturnTo } from '@/lib/auth-redirect'
 
 const OTP_LENGTH = 6
 const STORAGE_KEY = 'temp_verification_email'
@@ -735,7 +736,8 @@ export default function VerifyOtpPage() {
       }
       
       toast({ title: 'Verified Successfully', description: 'Your email is now confirmed. Please sign in.' })
-      router.push('/login')
+      const returnTo = typeof window !== 'undefined' ? getSafeReturnTo(new URLSearchParams(window.location.search).get('returnTo')) : '/account'
+      router.push(`/login?returnTo=${encodeURIComponent(returnTo)}`)
     } catch (err: any) {
       console.error('OTP Verification Failure:', err)
       setLocalError(err || 'The verification code provided is incorrect or has expired.')

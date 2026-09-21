@@ -5,8 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, MapPin } from 'lucide-react'
-import { fetchOrder, cancelOrder } from '@/lib/customer-api'
+import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, MapPin, FileText } from 'lucide-react'
+import { fetchOrder, fetchOrderInvoice, cancelOrder } from '@/lib/customer-api'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -29,6 +29,12 @@ export default function OrderDetailPage({ params }: Props) {
   const { data: order, isLoading, error } = useQuery({
     queryKey: ['order', id],
     queryFn: () => fetchOrder(id),
+    retry: false,
+  })
+  const { data: invoice } = useQuery({
+    queryKey: ['order-invoice', id],
+    queryFn: () => fetchOrderInvoice(id),
+    enabled: Boolean(order?.paymentStatus === 'PAID' || order?.status === 'CONFIRMED'),
     retry: false,
   })
 
@@ -105,6 +111,12 @@ export default function OrderDetailPage({ params }: Props) {
               <XCircle size={13} />
               {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Order'}
             </motion.button>
+          )}
+
+          {invoice?.invoiceNumber && (
+            <div className="flex items-center gap-2 px-4 py-2 border border-[#C89B3C]/40 text-[#6B3E26] font-sans text-xs">
+              <FileText size={13} /> Invoice {invoice.invoiceNumber}
+            </div>
           )}
 
           {isCancelled && (

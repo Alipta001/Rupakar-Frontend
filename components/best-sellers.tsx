@@ -6,71 +6,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, useInView } from 'framer-motion'
 import { Heart, ShoppingBag, Star, Eye } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchProducts, type Product } from '@/lib/products-api'
 
-const products = [
-  {
-    id: 1,
-    name: 'Madhubani Terracotta Vase',
-    craft: 'Bihar Folk Art',
-    price: 2499,
-    originalPrice: 3200,
-    rating: 4.9,
-    reviews: 128,
-    image: '/images/product-vase.jpg',
-    badge: 'Best Seller',
-    badgeColor: '#C89B3C',
-  },
-  {
-    id: 2,
-    name: 'Tribal Painted Bowl',
-    craft: 'Madhya Pradesh',
-    price: 1899,
-    originalPrice: null,
-    rating: 4.8,
-    reviews: 94,
-    image: '/images/product-bowl.jpg',
-    badge: 'New Arrival',
-    badgeColor: '#6B3E26',
-  },
-  {
-    id: 3,
-    name: 'Dancing Figurine',
-    craft: 'Rajasthan Craft',
-    price: 3499,
-    originalPrice: 4500,
-    rating: 5.0,
-    reviews: 57,
-    image: '/images/product-figurine.jpg',
-    badge: 'Limited Edition',
-    badgeColor: '#7A1F1F',
-  },
-  {
-    id: 4,
-    name: 'Hand-Carved Diya Lamp',
-    craft: 'Uttar Pradesh',
-    price: 999,
-    originalPrice: null,
-    rating: 4.7,
-    reviews: 213,
-    image: '/images/product-lamp.jpg',
-    badge: 'Best Seller',
-    badgeColor: '#C89B3C',
-  },
-  {
-    id: 5,
-    name: 'Pattachitra Wall Plate',
-    craft: 'Odisha Tradition',
-    price: 2199,
-    originalPrice: 2800,
-    rating: 4.9,
-    reviews: 76,
-    image: '/images/product-plate.jpg',
-    badge: 'Featured',
-    badgeColor: '#6B3E26',
-  },
-]
-
-function ProductCard({ product, index }: { product: typeof products[0]; index: number }) {
+function ProductCard({ product, index }: { product: Product; index: number }) {
   const [wishlist, setWishlist] = useState(false)
   const router = useRouter()
   const ref = useRef<HTMLDivElement>(null)
@@ -187,6 +126,11 @@ function ProductCard({ product, index }: { product: typeof products[0]; index: n
 export default function BestSellers() {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
+  const { data: products = [] } = useQuery<Product[]>({
+    queryKey: ['products', 'best-sellers'],
+    queryFn: () => fetchProducts({ limit: 5 }),
+    staleTime: 60 * 1000,
+  })
 
   return (
     <section className="py-28 bg-[#EFE3D3]" ref={ref}>

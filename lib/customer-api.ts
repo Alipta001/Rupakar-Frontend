@@ -158,8 +158,23 @@ export async function fetchOrders() {
   return Array.isArray(payload) ? payload : payload?.items ?? []
 }
 
+export async function fetchProductReviews(productId: string, page = 1, limit = 10) {
+  const response = await AxiosInstance.get(`${endPoints.reviews.product}/${encodeURIComponent(productId)}`, { params: { page, limit } })
+  return unwrap<{ items: any[]; page: number; limit: number; total: number; averageRating: number; breakdown: Record<string, number>; hasNextPage: boolean }>(response.data)
+}
+
+export async function createProductReview(payload: { productId: string; orderId: string; rating: number; title: string; comment: string }) {
+  const response = await AxiosInstance.post(endPoints.reviews.create, payload)
+  return unwrap<any>(response.data)
+}
+
 export async function fetchOrder(orderId: string) {
   const response = await AxiosInstance.get(`${endPoints.orders.list}/${orderId}`)
+  return unwrap<any>(response.data)
+}
+
+export async function fetchOrderInvoice(orderId: string) {
+  const response = await AxiosInstance.get(`${endPoints.orders.list}/${encodeURIComponent(orderId)}/invoice`)
   return unwrap<any>(response.data)
 }
 

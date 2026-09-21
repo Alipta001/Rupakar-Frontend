@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSelector } from 'react-redux'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
@@ -9,6 +11,7 @@ import { Heart, ArrowRight, Trash2, ShoppingBag } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { addCartItem, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
 
 const normalizeImage = (value: unknown) => {
   if (typeof value === 'string' && value.trim()) return value
@@ -37,12 +40,17 @@ const normalizeWishlistItem = (entry: any) => {
 
 export default function WishlistPage() {
   const queryClient = useQueryClient()
-  const authHydrated = useSelector((state: any) => state.auth.hydrated)
+  const router = useRouter()
+  const { hydrated: authHydrated, isAuthenticated } = useSelector((state: any) => state.auth)
+
+  useEffect(() => {
+    if (authHydrated && !isAuthenticated) router.replace(loginPathForCurrentLocation())
+  }, [authHydrated, isAuthenticated, router])
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['wishlist'],
     queryFn: fetchWishlist,
-    enabled: authHydrated,
+    enabled: authHydrated && isAuthenticated,
   })
 
   const items = Array.isArray(data?.items) ? data.items.map(normalizeWishlistItem) : Array.isArray(data) ? data.map(normalizeWishlistItem) : []

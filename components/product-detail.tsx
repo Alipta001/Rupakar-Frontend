@@ -6,10 +6,13 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, ShoppingBag, Star, Shield, Truck, RotateCcw, Award, Check } from 'lucide-react'
+import { useSelector } from 'react-redux'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Product } from '@/lib/products-api'
-import { addCartItem, addWishlistItem, fetchCart, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { addCartItem, addWishlistItem, createProductReview, fetchCart, fetchOrders, fetchProductReviews, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
+import { getCustomerErrorMessage } from '@/lib/api-errors'
+import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
 import BestSellers from './best-sellers'
 
 const guarantees = [
@@ -22,18 +25,55 @@ const guarantees = [
 function ProductDetailContent({ product }: { product: Product }) {
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
+  const { isAuthenticated, hydrated: authHydrated } = useSelector((state: any) => state.auth)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const [selectedVariantId, setSelectedVariantId] = useState('')
   const [activeTab, setActiveTab] = useState<'story' | 'details' | 'care'>('story')
   const [cartError, setCartError] = useState('')
+  const [reviewError, setReviewError] = useState('')
+  const [reviewSuccess, setReviewSuccess] = useState('')
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewTitle, setReviewTitle] = useState('')
+  const [reviewComment, setReviewComment] = useState('')
 
-  const productId = String(product._id ?? '')
-  const variantId = getProductVariantId(product)
-  const { data: cartData } = useQuery({ queryKey: ['cart'], queryFn: fetchCart, retry: false })
+  const productId = String(product._id ?? product.id ?? '')
+  const variants = (product.variants ?? []).filter((variant) => variant.status !== 'INACTIVE')
+  const defaultVariantId = getProductVariantId(product)
+  const variantId = selectedVariantId || defaultVariantId
+  const selectedVariant = variants.find((variant) => String(variant._id ?? variant.id) === variantId)
+  const productUnavailable = product.status && !['PUBLISHED', 'APPROVED'].includes(product.status)
+  const { data: cartData } = useQuery({
+    queryKey: ['cart'],
+    queryFn: fetchCart,
+    enabled: authHydrated && isAuthenticated,
+    retry: false,
+  })
   const { data: wishlistData } = useQuery({
     queryKey: ['wishlist'],
     queryFn: fetchWishlist,
+    enabled: authHydrated,
     retry: false,
+  })
+  const { data: reviewsData, isLoading: reviewsLoading } = useQuery({
+    queryKey: ['product-reviews', productId],
+    queryFn: () => fetchProductReviews(productId),
+    enabled: Boolean(productId),
+    retry: false,
+  })
+  const { data: ordersData } = useQuery({
+    queryKey: ['orders'],
+    queryFn: fetchOrders,
+    enabled: authHydrated && isAuthenticated,
+    retry: false,
+  })
+  const orders = Array.isArray(ordersData) ? ordersData : []
+  const eligibleOrder = orders.find((order: any) => {
+    const status = String(order?.status ?? '').toUpperCase()
+    return ['DELIVERED', 'RETURNED', 'REFUNDED'].includes(status)
+      && ['PAID', 'CAPTURED'].includes(String(order?.paymentStatus ?? '').toUpperCase())
+      && Array.isArray(order?.items)
+      && order.items.some((item: any) => String(item?.productId ?? item?.product?._id ?? '') === productId)
   })
   const wishlist = (Array.isArray(wishlistData?.items) ? wishlistData.items : []).some((item: any) =>
     String(item?.productId ?? item?.product?._id ?? item?.product?.id ?? item?._id ?? '') === productId,
@@ -46,9 +86,8 @@ function ProductDetailContent({ product }: { product: Product }) {
       queryClient.invalidateQueries({ queryKey: ['cart'] })
       setCartError('')
     },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message ?? err?.message ?? 'Could not add to cart'
-      setCartError(msg)
+    onError: (error: unknown) => {
+      setCartError(getCustomerErrorMessage(error, 'cart'))
       setTimeout(() => setCartError(''), 3000)
     },
   })
@@ -71,13 +110,61 @@ function ProductDetailContent({ product }: { product: Product }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
   })
 
+  const reviewMutation = useMutation({
+    mutationFn: () => createProductReview({ productId, orderId: String(eligibleOrder?._id ?? eligibleOrder?.id ?? ''), rating: reviewRating, title: reviewTitle.trim(), comment: reviewComment.trim() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-reviews', productId] })
+      setReviewTitle('')
+      setReviewComment('')
+      setReviewSuccess('Your review has been submitted.')
+      setReviewError('')
+    },
+    onError: (error: unknown) => {
+      const normalized = getCustomerErrorMessage(error, 'general')
+      setReviewError(normalized.includes('Something went wrong') ? 'We couldn\'t submit your review right now. Please try again.' : normalized)
+      setReviewSuccess('')
+    },
+  })
+
   const handleAddToBag = () => {
-    const productId = String(product._id ?? '')
-    if (!productId || !variantId) {
-      setCartError('This product is not available for purchase right now')
+    if (!isAuthenticated) {
+      window.location.href = `${loginPathForCurrentLocation()}&reason=bag`
+      return
+    }
+    if (productUnavailable || !productId) {
+      setCartError('This product is currently unavailable.')
+      return
+    }
+    if (variants.length > 0 && !selectedVariant) {
+      setCartError('This option is currently unavailable. Please choose another option.')
+      return
+    }
+    if (!variantId) {
+      setCartError('This item is currently out of stock.')
+      return
+    }
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      setCartError('Please choose a valid quantity.')
       return
     }
     addToCartMutation.mutate({ productId, variantId, quantity })
+  }
+
+  const handleWishlist = () => {
+    if (!isAuthenticated) {
+      setCartError('Please sign in to save items to your wishlist.')
+      window.setTimeout(() => { window.location.href = loginPathForCurrentLocation() }, 300)
+      return
+    }
+    wishlistMutation.mutate()
+  }
+
+  const handleReviewStart = () => {
+    if (!isAuthenticated) {
+      window.location.href = loginPathForCurrentLocation()
+      return
+    }
+    document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   useEffect(() => {
@@ -211,19 +298,35 @@ function ProductDetailContent({ product }: { product: Product }) {
             {/* Artisan line */}
             <div className="flex items-center gap-3 border-l-2 border-[#C89B3C] pl-4 mb-8">
               <div>
-                <div className="text-[#5B4B3F] font-sans text-[10px] tracking-[0.1em] uppercase mb-0.5">
-                  Crafted by
+                <div className="text-[#5B4B3F] font-sans text-[10px] tracking-[0.1em] uppercase mb-1">Retailer / Artist</div>
+                <div className="text-[#1E1A17]" style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1.1rem', fontStyle: 'italic' }}>
+                  {product.retailer || product.shopkeeper || product.artisan}
                 </div>
-                <div
-                  className="text-[#1E1A17]"
-                  style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1.1rem', fontStyle: 'italic' }}
-                >
-                  {product.artisan}
-                </div>
+                {product.brand?.name && <div className="text-[#5B4B3F] font-sans text-xs mt-1">Brand: {product.brand.name}</div>}
               </div>
             </div>
 
             {/* Quantity */}
+            {variants.length > 1 && (
+              <div className="mb-6">
+                <label htmlFor="product-variant" className="block text-[#5B4B3F] font-sans text-[10px] tracking-[0.2em] uppercase mb-2">
+                  Choose an option
+                </label>
+                <select
+                  id="product-variant"
+                  value={variantId}
+                  onChange={(event) => setSelectedVariantId(event.target.value)}
+                  className="w-full border border-[#D4C4B0] bg-white px-3 py-3 font-sans text-sm text-[#1E1A17]"
+                >
+                  {variants.map((variant) => {
+                    const id = String(variant._id ?? variant.id ?? '')
+                    const label = Object.values(variant.attributes ?? {}).filter(Boolean).join(' / ') || variant.sku || id
+                    return <option key={id} value={id}>{label}</option>
+                  })}
+                </select>
+              </div>
+            )}
+
             <div className="flex items-center gap-4 mb-6">
               <span className="text-[#5B4B3F] font-sans text-[10px] tracking-[0.2em] uppercase">Qty</span>
               <div className="flex items-center border border-[#D4C4B0]">
@@ -264,7 +367,7 @@ function ProductDetailContent({ product }: { product: Product }) {
                 {hasCartVariant(cartData, variantId) ? 'In Bag' : addToCartMutation.isPending ? 'Adding…' : 'Add to Bag'}
               </motion.button>
               <motion.button
-                onClick={() => wishlistMutation.mutate()}
+                onClick={handleWishlist}
                 disabled={wishlistMutation.isPending}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -283,7 +386,14 @@ function ProductDetailContent({ product }: { product: Product }) {
               </motion.button>
             </div>
             {cartError && (
-              <p className="text-[#7A1F1F] font-sans text-xs mb-5 tracking-[0.05em]">{cartError}</p>
+              <div className="text-[#7A1F1F] font-sans text-xs mb-5 tracking-[0.05em]">
+                <p>{cartError}</p>
+                {!isAuthenticated && (
+                  <Link href={`/login?redirect=/products/${encodeURIComponent(product.slug)}`} className="inline-block mt-2 underline">
+                    Sign in
+                  </Link>
+                )}
+              </div>
             )}
 
             {/* Guarantees */}
@@ -366,6 +476,48 @@ function ProductDetailContent({ product }: { product: Product }) {
         </div>
       </div>
 
+      <section id="reviews" className="max-w-7xl mx-auto px-6 pb-24">
+        <div className="border-t border-[#D4C4B0] pt-16">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+            <div>
+              <p className="text-[#C89B3C] font-sans text-[10px] tracking-[0.3em] uppercase mb-3">Collected voices</p>
+              <h2 className="text-[#1E1A17]" style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '2.5rem', fontWeight: 400 }}>Reviews</h2>
+            </div>
+            <div className="text-[#5B4B3F] font-sans text-sm">
+              <strong className="text-[#1E1A17] text-2xl">{reviewsData?.averageRating || 0}</strong> / 5 ({reviewsData?.total || 0} reviews)
+              <div className="mt-2 flex gap-2 text-xs">{[5, 4, 3, 2, 1].map((rating) => <span key={rating}>{rating}★ {reviewsData?.breakdown?.[rating] || 0}</span>)}</div>
+            </div>
+          </div>
+
+          {reviewsLoading ? <p className="text-[#5B4B3F] font-sans text-sm">Loading reviews…</p> : reviewsData?.items?.length ? (
+            <div className="grid gap-5 md:grid-cols-2">
+              {reviewsData.items.map((review: any) => (
+                <article key={review.id ?? review._id} className="border border-[#D4C4B0] bg-white/50 p-6">
+                  <div className="flex justify-between gap-4 mb-3"><strong className="font-sans text-sm">{review.reviewerName || 'Rupakar Customer'}</strong><span className="text-[#C89B3C]">{'★'.repeat(Number(review.rating || 0))}</span></div>
+                  <h3 className="font-sans text-sm font-semibold mb-2">{review.title}</h3>
+                  <p className="text-[#5B4B3F] font-sans text-sm leading-relaxed">{review.comment}</p>
+                  <time className="block mt-4 text-[#5B4B3F]/70 font-sans text-xs">{review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}</time>
+                </article>
+              ))}
+            </div>
+          ) : <p className="text-[#5B4B3F] font-sans text-sm">No reviews yet. Be the first to share your experience.</p>}
+
+          <div className="mt-10 border-t border-[#D4C4B0] pt-8">
+            <h3 className="text-[#1E1A17] mb-4" style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1.8rem' }}>Share your experience</h3>
+            {!isAuthenticated ? <button onClick={handleReviewStart} className="border border-[#C89B3C] text-[#6B3E26] px-5 py-3 font-sans text-xs tracking-[0.15em] uppercase">Please sign in to write a review</button>
+              : !eligibleOrder ? <p className="text-[#5B4B3F] font-sans text-sm">You can review products you&apos;ve purchased.</p>
+                : <form onSubmit={(event) => { event.preventDefault(); if (reviewComment.trim().length < 3 || reviewTitle.trim().length < 3) { setReviewError('Please add a title and review of at least 3 characters.'); return } reviewMutation.mutate() }} className="max-w-2xl space-y-4">
+                  <div className="flex gap-2">{[1, 2, 3, 4, 5].map((value) => <button type="button" key={value} onClick={() => setReviewRating(value)} className={value <= reviewRating ? 'text-[#C89B3C] text-xl' : 'text-[#D4C4B0] text-xl'} aria-label={`${value} stars`}>★</button>)}</div>
+                  <input value={reviewTitle} onChange={(event) => setReviewTitle(event.target.value)} placeholder="Review title" maxLength={120} className="w-full border border-[#D4C4B0] bg-white px-4 py-3 font-sans text-sm" />
+                  <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} placeholder="Tell us about your experience" maxLength={2000} rows={4} className="w-full border border-[#D4C4B0] bg-white px-4 py-3 font-sans text-sm" />
+                  <button disabled={reviewMutation.isPending} className="bg-[#1E1A17] text-[#F8F4EE] px-5 py-3 font-sans text-xs tracking-[0.15em] uppercase">{reviewMutation.isPending ? 'Submitting…' : 'Submit review'}</button>
+                </form>}
+            {reviewError && <p className="mt-4 text-[#7A1F1F] font-sans text-sm">{reviewError}</p>}
+            {reviewSuccess && <p className="mt-4 text-[#2A5E3A] font-sans text-sm">{reviewSuccess}</p>}
+          </div>
+        </div>
+      </section>
+
       {/* Related products */}
       <BestSellers />
     </div>
@@ -375,7 +527,7 @@ function ProductDetailContent({ product }: { product: Product }) {
 export default function ProductDetail({ product }: { product: Product }) {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#F8F4EE] pt-24" />}>
-      <ProductDetailContent product={product} />
+      <ProductDetailContent key={product.id ?? product._id ?? product.slug} product={product} />
     </Suspense>
   )
 }

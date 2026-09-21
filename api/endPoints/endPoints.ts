@@ -46,4 +46,8 @@ export const endPoints = {
     config: "/payments/config",
     verify: "/payments/verify",
   },
+  reviews: {
+    product: "/reviews/product",
+    create: "/reviews",
+  },
 };

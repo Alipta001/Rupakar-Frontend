@@ -9,12 +9,18 @@ import { useQueryClient } from '@tanstack/react-query'
 import { AuthShell } from '@/components/auth-shell'
 import { authLogin, setAuth, AUTH_USER_STORAGE_KEY } from '@/redux/slice/authSlice/authSlice'
 import { syncGuestWishlistToServer, mergeGuestCart } from '@/lib/customer-api'
+import { getSafeReturnTo } from '@/lib/auth-redirect'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return new URLSearchParams(window.location.search).get('reason') === 'bag'
+      ? 'Please sign in to add items to your bag.'
+      : ''
+  })
   const dispatch = useDispatch<any>()
   const queryClient = useQueryClient()
   const { loading } = useSelector((state: any) => state.auth)
@@ -58,7 +64,8 @@ export default function LoginPage() {
         queryClient.invalidateQueries({ queryKey: ['orders'] })
       }
 
-      router.push('/account')
+      const returnTo = typeof window !== 'undefined' ? getSafeReturnTo(new URLSearchParams(window.location.search).get('returnTo')) : '/account'
+      router.push(returnTo)
     } catch (error: any) {
       const msg = error?.message || (typeof error === 'string' ? error : 'Invalid email or password. Please try again.')
       setErrorMessage(msg)

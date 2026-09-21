@@ -1,4 +1,15 @@
 import { AxiosInstance } from '@/api/axios/axios'
+import { normalizeApiError } from './api-errors'
+
+export type ProductVariant = {
+  _id?: string
+  id?: string
+  sku?: string
+  price: number
+  compareAtPrice?: number | null
+  attributes?: Record<string, string>
+  status?: string
+}
 
 export interface Product {
   id: string
@@ -23,6 +34,13 @@ export interface Product {
   material: string
   care: string
   category: string
+  vendor?: { id?: string; businessName?: string; legalName?: string; description?: string; website?: string }
+  retailer?: string
+  shopkeeper?: string
+  brand?: { id?: string; name?: string; slug?: string; logo?: string }
+  variants?: ProductVariant[]
+  status?: string
+  authenticity?: Record<string, unknown>
 }
 
 const baseFallbackProducts: Product[] = [
@@ -176,6 +194,13 @@ const normalizeProduct = (item: any): Product => {
     material: String(item?.material ?? 'Natural materials'),
     care: String(item?.care ?? 'Handle with care.'),
     category: String(item?.category ?? 'terracotta'),
+    vendor: item?.vendor,
+    retailer: item?.retailer ?? item?.vendor?.businessName ?? item?.vendor?.legalName,
+    shopkeeper: item?.shopkeeper ?? item?.vendor?.businessName ?? item?.vendor?.legalName,
+    brand: item?.brand ?? (typeof item?.brandId === 'object' ? item.brandId : undefined),
+    variants: Array.isArray(item?.variants) ? item.variants : [],
+    status: item?.status,
+    authenticity: item?.authenticity,
   }
 }
 
@@ -186,17 +211,18 @@ export async function fetchProducts(params: Record<string, any> = {}) {
     const list = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : []
     return list.map(normalizeProduct)
   } catch (error) {
-    return fallbackProducts
+    throw normalizeApiError(error)
   }
 }
 
 export async function fetchProductBySlug(slug: string) {
+  if (!slug?.trim()) return undefined
   try {
-    const response = await AxiosInstance.get(`/products/${slug}`)
+    const response = await AxiosInstance.get(`/products/${encodeURIComponent(slug)}`)
     const payload = response.data?.data ?? response.data ?? null
     return payload ? normalizeProduct(payload) : undefined
   } catch (error) {
-    return fallbackProducts.find((product) => product.slug === slug) ?? fallbackProducts[0]
+    throw normalizeApiError(error)
   }
 }
 

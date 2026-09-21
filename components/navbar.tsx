@@ -43,11 +43,13 @@ export default function Navbar() {
     queryKey: ['cart'],
     queryFn: fetchCart,
     staleTime: 30 * 1000,
+    enabled: Boolean(isAuthenticated),
   })
   const { data: wishlistData } = useQuery({
     queryKey: ['wishlist'],
     queryFn: fetchWishlist,
     staleTime: 60 * 1000,
+    enabled: Boolean(isAuthenticated),
   })
   const cartCount = cartData?.itemCount ?? (Array.isArray(cartData?.items) ? cartData.items.reduce((s: number, i: any) => s + Number(i.quantity ?? 1), 0) : 0)
   const wishlistCount = Array.isArray(wishlistData?.items) ? wishlistData.items.length : 0
@@ -142,7 +144,7 @@ export default function Navbar() {
           {/* Right Nav - Icons & Auth & Mobile Toggle */}
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Search */}
-            <motion.button
+            {isAuthenticated && <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => router.push('/search')}
@@ -150,10 +152,10 @@ export default function Navbar() {
               aria-label="Search"
             >
               <Search size={18} strokeWidth={1.5} />
-            </motion.button>
+            </motion.button>}
 
             {/* Wishlist */}
-            <motion.button
+            {isAuthenticated && <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => router.push('/wishlist')}
@@ -166,7 +168,7 @@ export default function Navbar() {
                   {wishlistCount > 9 ? '9+' : wishlistCount}
                 </span>
               )}
-            </motion.button>
+            </motion.button>}
 
             {/* Cart */}
             <motion.button
@@ -327,7 +329,7 @@ export default function Navbar() {
               </Link>
 
               {/* Quick Links: Wishlist & Cart in Mobile Menu */}
-              <div className="pt-2 border-t border-[#C89B3C]/20 space-y-2">
+              {isAuthenticated && <div className="pt-2 border-t border-[#C89B3C]/20 space-y-2">
                 <Link
                   href="/wishlist"
                   onClick={() => setMobileOpen(false)}
@@ -359,7 +361,7 @@ export default function Navbar() {
                     </span>
                   )}
                 </Link>
-              </div>
+              </div>}
 
               {/* Mobile Auth Layout */}
               {mounted && (

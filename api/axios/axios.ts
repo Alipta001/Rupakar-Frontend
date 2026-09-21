@@ -10,7 +10,11 @@ const resolveApiBaseUrl = () => {
     return "/api/v1";
   }
 
-  return (configuredUrl || productionApiBaseUrl).replace(/\/$/, "");
+  if (configuredUrl && !configuredUrl.includes(",")) {
+    return configuredUrl.replace(/\/$/, "");
+  }
+
+  return "http://localhost:4000/api/v1";
 };
 
 export const BaseURL = resolveApiBaseUrl();

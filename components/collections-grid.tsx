@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, ShoppingBag, Star, SlidersHorizontal } from 'lucide-react'
 import { addCartItem, addWishlistItem, fetchCart, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
-import { fetchProducts, fallbackProducts, type Product } from '@/lib/products-api'
+import { fetchProducts, type Product } from '@/lib/products-api'
 
 const categories = ['All', 'Terracotta', 'Folk Art', 'Decor', 'Jewelry']
 const sortOptions = ['Featured', 'Price: Low to High', 'Price: High to Low', 'Best Rated']
@@ -29,7 +29,7 @@ export default function CollectionsGrid() {
     String(item?.productId ?? item?.product?._id ?? item?.product?.id ?? item?._id ?? ''),
   )
 
-  const { data: catalog = fallbackProducts } = useQuery<Product[]>({
+  const { data: catalog = [] } = useQuery<Product[]>({
     queryKey: ['products', activeCategory, activeSort],
     queryFn: () => fetchProducts({ category: activeCategory === 'All' ? undefined : activeCategory }),
     staleTime: 60 * 1000,

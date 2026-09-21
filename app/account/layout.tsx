@@ -203,6 +203,7 @@ import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { useSelector, useDispatch } from 'react-redux'
 import { authLogout, fetchCurrentUserThunk } from '@/redux/slice/authSlice/authSlice'
+import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
 
 const menuItems = [
   { icon: Home, label: 'Dashboard', href: '/account' },
@@ -243,7 +244,7 @@ export default function AccountLayout({
     dispatch(fetchCurrentUserThunk())
       .unwrap()
       .catch(() => {
-        if (!cancelled) router.push('/login')
+        if (!cancelled) router.push(loginPathForCurrentLocation())
       })
       .finally(() => {
         if (!cancelled) setAuthChecked(true)

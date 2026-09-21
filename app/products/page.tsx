@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Filter, SlidersHorizontal, Heart, ShoppingBag, Star, X } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
-import { fetchProducts, fallbackProducts, type Product } from '@/lib/products-api'
+import { fetchProducts, type Product } from '@/lib/products-api'
 import { addCartItem, addWishlistItem, fetchCart, fetchCategories, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 
@@ -56,7 +56,6 @@ export default function ProductsPage() {
     queryKey: ['products', queryParams],
     queryFn: () => fetchProducts(queryParams),
     staleTime: 60 * 1000,
-    placeholderData: fallbackProducts,
   })
 
   const addToCartMutation = useMutation({

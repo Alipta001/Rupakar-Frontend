@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -11,6 +11,8 @@ import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { cancelOrder, confirmPayment, createAddress, createOrder, fetchAddresses, fetchCart, fetchOrder, fetchPaymentConfig, previewCheckout } from '@/lib/customer-api'
 import { refreshCheckoutAfterPaymentCancellation } from '@/lib/checkout-state'
+import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
+import { useSelector } from 'react-redux'
 
 type Step = 'address' | 'payment' | 'review'
 
@@ -51,6 +53,7 @@ const loadRazorpayCheckout = async () => {
 export default function CheckoutPage() {
   const queryClient = useQueryClient()
   const router = useRouter()
+  const { hydrated: authHydrated, isAuthenticated } = useSelector((state: any) => state.auth)
   const [step, setStep] = useState<Step>('address')
   const [selectedAddressIdOverride, setSelectedAddressIdOverride] = useState<string | null>(null)
   const [newAddressMode, setNewAddressMode] = useState(false)
@@ -68,14 +71,20 @@ export default function CheckoutPage() {
     phone: '',
   })
 
+  useEffect(() => {
+    if (authHydrated && !isAuthenticated) router.replace(loginPathForCurrentLocation())
+  }, [authHydrated, isAuthenticated, router])
+
   const { data: cartData, isLoading: cartLoading, isError: cartError } = useQuery({
     queryKey: ['cart'],
     queryFn: fetchCart,
+    enabled: authHydrated && isAuthenticated,
   })
 
   const { data: addressesData = [], isLoading: addressesLoading, isError: addressesError } = useQuery({
     queryKey: ['addresses'],
     queryFn: fetchAddresses,
+    enabled: authHydrated && isAuthenticated,
     retry: false,
   })
 

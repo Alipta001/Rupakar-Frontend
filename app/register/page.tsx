@@ -628,6 +628,7 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { AuthShell } from '@/components/auth-shell'
 import { authRegister } from '@/redux/slice/authSlice/authSlice'
+import { getSafeReturnTo } from '@/lib/auth-redirect'
 
 // Validation Schema using Yup
 const schema = yup.object().shape({
@@ -723,7 +724,8 @@ export default function RegisterPage() {
         localStorage.setItem(STORAGE_KEY, cleanEmail)
       }
 
-      router.push('/verify-otp')
+      const returnTo = typeof window !== 'undefined' ? getSafeReturnTo(new URLSearchParams(window.location.search).get('returnTo')) : '/account'
+      router.push(`/verify-otp?returnTo=${encodeURIComponent(returnTo)}`)
     } catch (error) {
       console.error('Registration failed:', error)
     }

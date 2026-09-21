@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSelector } from 'react-redux'
 import Link from 'next/link'
@@ -9,18 +10,25 @@ import { ShoppingBag, ArrowRight, Trash2, Plus, Minus } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { clearCart, fetchCart, removeCartItem, updateCartItem } from '@/lib/customer-api'
+import { getCustomerErrorMessage } from '@/lib/api-errors'
+import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
 
 export default function CartPage() {
   const queryClient = useQueryClient()
-  const authHydrated = useSelector((state: any) => state.auth.hydrated)
+  const router = useRouter()
+  const { hydrated: authHydrated, isAuthenticated } = useSelector((state: any) => state.auth)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const sequenceMap = useRef<Map<string, number>>(new Map())
   const snapshotMap = useRef<Map<string, any>>(new Map())
 
+  useEffect(() => {
+    if (authHydrated && !isAuthenticated) router.replace(loginPathForCurrentLocation())
+  }, [authHydrated, isAuthenticated, router])
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['cart'],
     queryFn: fetchCart,
-    enabled: authHydrated,
+    enabled: authHydrated && isAuthenticated,
   })
 
   const items: any[] = Array.isArray(data?.items) ? data.items : []
@@ -89,8 +97,7 @@ export default function CartPage() {
         if (snapshot) {
           queryClient.setQueryData(['cart'], snapshot)
         }
-        const msg = err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || 'Could not update item quantity'
-        setErrorMessage(msg)
+        setErrorMessage(getCustomerErrorMessage(err, 'cart'))
       }
     }
   }
@@ -120,8 +127,7 @@ export default function CartPage() {
       if (previousCart) {
         queryClient.setQueryData(['cart'], previousCart)
       }
-      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || 'Could not remove item'
-      setErrorMessage(msg)
+      setErrorMessage(getCustomerErrorMessage(err, 'cart'))
     }
   }
 
@@ -147,8 +153,7 @@ export default function CartPage() {
       if (previousCart) {
         queryClient.setQueryData(['cart'], previousCart)
       }
-      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || 'Could not clear cart'
-      setErrorMessage(msg)
+      setErrorMessage(getCustomerErrorMessage(err, 'cart'))
     }
   }
 
