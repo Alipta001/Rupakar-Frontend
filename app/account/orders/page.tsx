@@ -1,11 +1,13 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import { motion } from 'framer-motion'
 import { Truck, Package, CheckCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
-import { fetchOrders } from '@/lib/customer-api'
+import { fetchOrdersPage } from '@/lib/customer-api'
 
 const statusConfig = {
   pending: { icon: AlertCircle, color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
@@ -19,17 +21,20 @@ const statusConfig = {
 } as const
 
 export default function OrdersPage() {
+  const router = useRouter(); const searchParams = useSearchParams()
+  const page = Math.max(Number(searchParams.get('page')) || 1, 1); const status = searchParams.get('status') || 'ALL'
+  const setPage = (next: number, nextStatus = status) => { const params = new URLSearchParams(); if (next > 1) params.set('page', String(next)); if (nextStatus !== 'ALL') params.set('status', nextStatus); router.replace(`/account/orders${params.size ? `?${params}` : ''}`) }
   const authHydrated = useSelector((state: any) => state.auth.hydrated)
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['orders'],
-    queryFn: fetchOrders,
+    queryKey: ['orders', page, status],
+    queryFn: () => fetchOrdersPage(page, 12, status),
     enabled: authHydrated,
     retry: false,
   })
 
-  const orders = Array.isArray(data) ? data : []
+  const orders = Array.isArray(data?.items) ? data.items : []
 
-  const normalizedOrders = orders.map((order) => ({
+  const normalizedOrders = orders.map((order: any) => ({
     id: order?._id ?? order?.id ?? order?.orderId ?? 'unknown',
     orderNumber: order?.orderNumber ?? order?.number ?? order?.id ?? '—',
     date: order?.createdAt ?? order?.date ?? new Date().toISOString(),
@@ -43,6 +48,7 @@ export default function OrdersPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <h1 className="text-3xl md:text-4xl tracking-[-0.02em] mb-2" style={{ fontFamily: 'var(--font-cormorant)' }}>Order History</h1>
         <p className="text-[#5B4B3F] font-sans text-sm tracking-[0.05em]">Track and manage all your orders</p>
+        <div className="mt-4 flex gap-2 overflow-x-auto">{['ALL','PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED'].map((value) => <button key={value} onClick={() => setPage(1, value)} className={`px-3 py-2 text-xs border ${status === value ? 'bg-[#1E1A17] text-white' : ''}`}>{value === 'ALL' ? 'All' : value[0] + value.slice(1).toLowerCase()}</button>)}</div>
       </motion.div>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.1 }} className="space-y-4">
@@ -58,7 +64,7 @@ export default function OrdersPage() {
             <p className="text-[#5B4B3F] font-sans text-sm tracking-[0.05em]">No orders to display yet.</p>
           </motion.div>
         ) : (
-          normalizedOrders.map((order, index) => {
+          normalizedOrders.map((order: any, index: number) => {
             const statusInfo = statusConfig[order.status as keyof typeof statusConfig] ?? statusConfig.pending
             const Icon = statusInfo.icon
 
@@ -94,6 +100,11 @@ export default function OrdersPage() {
           })
         )}
       </motion.div>
+      {!isLoading && !isError && data?.totalPages > 1 && <div className="flex items-center justify-between border-t border-[#E6D8C6] pt-4 text-sm">
+        <button onClick={() => setPage(page - 1)} disabled={!data.hasPrevious} className="px-4 py-2 border disabled:opacity-40">Previous</button>
+        <span>Page {data.page} of {data.totalPages}</span>
+        <button onClick={() => setPage(page + 1)} disabled={!data.hasNext} className="px-4 py-2 border disabled:opacity-40">Next</button>
+      </div>}
     </div>
   )
 }

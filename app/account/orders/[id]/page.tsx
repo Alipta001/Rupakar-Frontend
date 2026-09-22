@@ -1,12 +1,12 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, MapPin, FileText } from 'lucide-react'
-import { fetchOrder, fetchOrderInvoice, cancelOrder } from '@/lib/customer-api'
+import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, MapPin, FileText, Download } from 'lucide-react'
+import { downloadOrderInvoicePdf, fetchOrder, fetchOrderInvoice, cancelOrder } from '@/lib/customer-api'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -21,6 +21,17 @@ const ORDER_STEPS = [
 ]
 
 const STATUS_ORDER = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED']
+
+const itemImageUrl = (item: any) => {
+  const snapshot = item?.productSnapshot ?? {}
+  const images = [item?.image, snapshot.image, ...(Array.isArray(item?.images) ? item.images : []), ...(Array.isArray(snapshot.images) ? snapshot.images : [])]
+  const image = images.find((candidate) => typeof candidate === 'string' ? candidate : typeof candidate?.url === 'string')
+  return typeof image === 'string' ? image : image?.url ?? null
+}
+
+const itemName = (item: any) => item?.productName ?? item?.name ?? item?.productSnapshot?.name ?? 'Artisan Product'
+const itemVariant = (item: any) => Object.values(item?.productSnapshot?.attributes ?? {}).filter(Boolean).join(' · ')
+const displayStatus = (status?: string) => String(status ?? 'PENDING').replaceAll('_', ' ')
 
 export default function OrderDetailPage({ params }: Props) {
   const { id } = use(params)
@@ -37,6 +48,25 @@ export default function OrderDetailPage({ params }: Props) {
     enabled: Boolean(order?.paymentStatus === 'PAID' || order?.status === 'CONFIRMED'),
     retry: false,
   })
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
+
+  const handleInvoiceDownload = async () => {
+    setIsDownloadingInvoice(true)
+    try {
+      const download = await downloadOrderInvoicePdf(id)
+      const url = download.downloadUrl
+      if (url) {
+        const anchor = document.createElement('a')
+        anchor.href = url
+        anchor.target = '_blank'
+        anchor.rel = 'noreferrer'
+        anchor.download = `${download.invoiceNumber || invoice.invoiceNumber || 'rupakar-invoice'}.pdf`
+        anchor.click()
+      } else throw new Error('The invoice PDF is not ready yet.')
+    } finally {
+      setIsDownloadingInvoice(false)
+    }
+  }
 
   const cancelMutation = useMutation({
     mutationFn: () => cancelOrder(id),
@@ -73,7 +103,14 @@ export default function OrderDetailPage({ params }: Props) {
   const canCancel = ['PENDING', 'CONFIRMED'].includes(statusUpperCase)
   const currentStepIndex = isCancelled ? -1 : STATUS_ORDER.indexOf(statusUpperCase)
   const items = Array.isArray(order.items) ? order.items : []
-  const shippingAddr = order.shippingAddress ?? order.address ?? null
+  const vendorOrders = Array.isArray(order.vendorOrders) ? order.vendorOrders.filter((vendorOrder: any) => vendorOrder && typeof vendorOrder === 'object') : []
+  const itemGroups = vendorOrders.length ? vendorOrders.map((vendorOrder: any) => ({
+    id: String(vendorOrder._id ?? vendorOrder.vendorId?._id ?? vendorOrder.vendorId),
+    name: vendorOrder.vendorId?.businessName ?? vendorOrder.vendorId?.legalName ?? 'Seller fulfillment',
+    status: vendorOrder.status,
+    items: Array.isArray(vendorOrder.items) ? vendorOrder.items : [],
+  })) : [{ id: 'order-items', name: 'Order items', status: order.status, items }]
+  const shippingAddr = order.shippingAddressSnapshot ?? order.shippingAddress ?? order.address ?? null
   const total = Number(order.total ?? order.grandTotal ?? order.amount ?? 0)
   const orderNumber = order.orderNumber ?? order.number ?? id
 
@@ -113,10 +150,15 @@ export default function OrderDetailPage({ params }: Props) {
             </motion.button>
           )}
 
-          {invoice?.invoiceNumber && (
-            <div className="flex items-center gap-2 px-4 py-2 border border-[#C89B3C]/40 text-[#6B3E26] font-sans text-xs">
-              <FileText size={13} /> Invoice {invoice.invoiceNumber}
-            </div>
+          {(order.paymentStatus === 'PAID' || order.status === 'CONFIRMED') && (
+            <button
+              onClick={handleInvoiceDownload}
+              disabled={isDownloadingInvoice}
+              className="flex items-center gap-2 border border-[#C89B3C] bg-[#C89B3C] text-[#1E1A17] px-4 py-2.5 font-sans text-[10px] tracking-[0.1em] uppercase hover:bg-[#B7792B] hover:border-[#B7792B] transition-colors disabled:opacity-60"
+            >
+              {isDownloadingInvoice ? <FileText size={13} className="animate-pulse" /> : <Download size={13} />}
+              {isDownloadingInvoice ? 'Preparing…' : invoice?.generationStatus === 'FAILED' ? 'Retry Invoice' : invoice?.generationStatus !== 'AVAILABLE' ? 'Preparing Invoice…' : 'Download Invoice'}
+            </button>
           )}
 
           {isCancelled && (
@@ -181,31 +223,44 @@ export default function OrderDetailPage({ params }: Props) {
           <h2 className="text-sm font-sans tracking-[0.1em] uppercase text-[#5B4B3F] mb-5">
             Items ({items.length})
           </h2>
-          <div className="space-y-4">
-            {items.map((item: any, i: number) => (
-              <div key={i} className="flex items-center gap-4 py-3 border-b border-[#EFE3D3] last:border-0">
-                <div className="w-16 h-16 bg-[#EFE3D3] flex-shrink-0 overflow-hidden rounded">
-                  {item.image && <Image src={item.image} alt={item.name ?? ''} width={64} height={64} className="w-full h-full object-cover" unoptimized />}
+          <div className="space-y-6">
+            {itemGroups.map((group: any) => (
+              <section key={group.id} className="border border-[#EFE3D3] rounded-md overflow-hidden">
+                <header className="flex items-center justify-between gap-3 bg-[#FCF9F4] px-4 py-3">
+                  <p className="font-sans text-xs font-semibold text-[#1E1A17]">{group.name}</p>
+                  <span className="font-sans text-[10px] tracking-[0.08em] uppercase text-[#6B3E26]">{displayStatus(group.status)}</span>
+                </header>
+                <div className="px-4">
+                  {group.items.map((item: any, i: number) => {
+                    const imageUrl = itemImageUrl(item)
+                    const unitPrice = Number(item.unitPrice ?? item.price ?? item.productSnapshot?.price ?? 0)
+                    return <div key={`${item.variantId ?? item.sku ?? i}`} className="flex items-center gap-4 py-3 border-b border-[#EFE3D3] last:border-0">
+                      <div className="w-16 h-16 bg-[#EFE3D3] flex-shrink-0 overflow-hidden rounded">
+                        {imageUrl ? <Image src={imageUrl} alt={itemName(item)} width={64} height={64} className="w-full h-full object-cover" unoptimized /> : <Package aria-label="Product image unavailable" size={22} className="m-[21px] text-[#A88D70]" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-sans text-sm text-[#1E1A17] font-medium">{itemName(item)}</p>
+                        {itemVariant(item) && <p className="font-sans text-[10px] text-[#C89B3C] tracking-[0.06em] uppercase">{itemVariant(item)}</p>}
+                        <p className="font-sans text-xs text-[#5B4B3F] mt-0.5">SKU: {item.sku ?? item.productSnapshot?.sku ?? '—'} · Qty: {item.quantity}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-sans text-sm text-[#1E1A17] font-semibold">₹{Number(item.lineTotal ?? unitPrice * Number(item.quantity ?? 1)).toLocaleString()}</p>
+                        <p className="font-sans text-[10px] text-[#5B4B3F]">₹{unitPrice.toLocaleString()} each</p>
+                      </div>
+                    </div>
+                  })}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-sans text-sm text-[#1E1A17] font-medium">{item.name ?? 'Artisan Product'}</p>
-                  {item.craft && <p className="font-sans text-[10px] text-[#C89B3C] tracking-[0.1em] uppercase">{item.craft}</p>}
-                  <p className="font-sans text-xs text-[#5B4B3F] mt-0.5">Qty: {item.quantity}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-sans text-sm text-[#1E1A17] font-semibold">
-                    ₹{(Number(item.price ?? item.unitPrice ?? 0) * Number(item.quantity ?? 1)).toLocaleString()}
-                  </p>
-                  <p className="font-sans text-[10px] text-[#5B4B3F]">₹{Number(item.price ?? item.unitPrice ?? 0).toLocaleString()} each</p>
-                </div>
-              </div>
+              </section>
             ))}
           </div>
 
           {/* Total */}
-          <div className="mt-5 pt-4 border-t border-[#EFE3D3] flex justify-between">
-            <span className="font-sans text-sm text-[#1E1A17] font-bold">Order Total</span>
-            <span className="font-sans text-lg text-[#C89B3C] font-bold">₹{total.toLocaleString()}</span>
+          <div className="mt-5 pt-4 border-t border-[#EFE3D3] space-y-1.5 font-sans text-xs text-[#5B4B3F]">
+            <div className="flex justify-between"><span>Subtotal</span><span>₹{Number(order.subtotal ?? 0).toLocaleString()}</span></div>
+            {Number(order.discount ?? 0) > 0 && <div className="flex justify-between"><span>Discount</span><span>− ₹{Number(order.discount).toLocaleString()}</span></div>}
+            <div className="flex justify-between"><span>Tax</span><span>₹{Number(order.tax ?? 0).toLocaleString()}</span></div>
+            <div className="flex justify-between"><span>Delivery</span><span>₹{Number(order.shipping ?? 0).toLocaleString()}</span></div>
+            <div className="pt-2 mt-2 border-t border-[#EFE3D3] flex justify-between text-sm text-[#1E1A17] font-bold"><span>Order Total</span><span className="text-lg text-[#C89B3C]">₹{total.toLocaleString()}</span></div>
           </div>
         </motion.div>
 

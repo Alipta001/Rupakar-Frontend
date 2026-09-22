@@ -3,10 +3,15 @@
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Mail, Phone, MapPin } from 'lucide-react'
+import { useState } from 'react'
+import { AxiosInstance } from '@/api/axios/axios'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 
 export default function ContactPage() {
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' })
+  const [state, setState] = useState<{ sending: boolean; message: string }>({ sending: false, message: '' })
+  const submit = async (event: React.FormEvent) => { event.preventDefault(); if (!form.name.trim() || !/^\S+@\S+\.\S+$/.test(form.email) || form.subject.trim().length < 3 || form.message.trim().length < 10) { setState({ sending: false, message: 'Please complete all fields with a valid email and message.' }); return } setState({ sending: true, message: '' }); try { await AxiosInstance.post('/contact', form); setForm({ name: '', email: '', subject: '', message: '' }); setState({ sending: false, message: 'Thank you — your message has been sent.' }) } catch { setState({ sending: false, message: 'We could not send your message. Please try again shortly.' }) } }
   return (
     <main>
       <Navbar />
@@ -74,27 +79,31 @@ export default function ContactPage() {
               >
                 Send us a Message
               </h2>
-              <form className="space-y-5">
+              <form className="space-y-5" onSubmit={submit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <input
                     type="text"
+                    value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} disabled={state.sending}
                     placeholder="Your Name"
                     className="px-4 py-3 border border-[#D4C4B0] bg-[#F8F4EE] text-[#1E1A17] font-sans text-sm focus:outline-none focus:border-[#C89B3C] transition-colors"
                   />
                   <input
                     type="email"
+                    value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={state.sending}
                     placeholder="Your Email"
                     className="px-4 py-3 border border-[#D4C4B0] bg-[#F8F4EE] text-[#1E1A17] font-sans text-sm focus:outline-none focus:border-[#C89B3C] transition-colors"
                   />
                 </div>
                 <input
                   type="text"
+                  value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} disabled={state.sending}
                   placeholder="Subject"
                   className="w-full px-4 py-3 border border-[#D4C4B0] bg-[#F8F4EE] text-[#1E1A17] font-sans text-sm focus:outline-none focus:border-[#C89B3C] transition-colors"
                 />
                 <textarea
                   placeholder="Your message..."
                   rows={6}
+                  value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} disabled={state.sending}
                   className="w-full px-4 py-3 border border-[#D4C4B0] bg-[#F8F4EE] text-[#1E1A17] font-sans text-sm focus:outline-none focus:border-[#C89B3C] transition-colors resize-none"
                 />
                 <motion.button
@@ -103,8 +112,9 @@ export default function ContactPage() {
                   type="submit"
                   className="bg-[#1E1A17] text-[#F8F4EE] px-8 py-3 font-sans text-xs tracking-[0.2em] uppercase hover:bg-[#6B3E26] transition-colors"
                 >
-                  Send Message
+                  {state.sending ? 'Sending…' : 'Send Message'}
                 </motion.button>
+                {state.message && <p role="status" className="text-sm text-[#5B4B3F]">{state.message}</p>}
               </form>
             </div>
           </motion.div>

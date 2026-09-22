@@ -70,12 +70,13 @@ const isClientAuthenticated = () => {
   }
 }
 
-export async function fetchWishlist() {
+export async function fetchWishlistPage(page = 1, limit = 12) {
   if (!isClientAuthenticated()) {
-    return { items: getGuestWishlist() }
+    const items = getGuestWishlist()
+    return { items: items.slice((page - 1) * limit, page * limit), page, limit, total: items.length, totalPages: Math.ceil(items.length / limit), hasNext: page * limit < items.length, hasPrevious: page > 1 }
   }
   try {
-    const response = await AxiosInstance.get(endPoints.wishlist.list)
+    const response = await AxiosInstance.get(endPoints.wishlist.list, { params: { page, limit } })
     return unwrap<{ userId?: string; items?: any[] }>(response.data)
   } catch (error: any) {
     if (error?.response?.status === 401) {
@@ -84,6 +85,8 @@ export async function fetchWishlist() {
     throw error
   }
 }
+
+export async function fetchWishlist() { return fetchWishlistPage() }
 
 export async function addWishlistItem(productId: string, itemDetails?: Partial<GuestWishlistItem>) {
   if (!isClientAuthenticated()) {
@@ -152,11 +155,13 @@ export async function clearCart() {
   return unwrap<any>(response.data)
 }
 
-export async function fetchOrders() {
-  const response = await AxiosInstance.get(endPoints.orders.list)
+export async function fetchOrdersPage(page = 1, limit = 12, status?: string) {
+  const response = await AxiosInstance.get(endPoints.orders.list, { params: { page, limit, ...(status && status !== 'ALL' ? { status } : {}) } })
   const payload = unwrap<any>(response.data)
-  return Array.isArray(payload) ? payload : payload?.items ?? []
+  return Array.isArray(payload) ? { items: payload, page, limit, total: payload.length, totalPages: 1, hasNext: false, hasPrevious: false } : payload
 }
+
+export async function fetchOrders() { return fetchOrdersPage() }
 
 export async function fetchProductReviews(productId: string, page = 1, limit = 10) {
   const response = await AxiosInstance.get(`${endPoints.reviews.product}/${encodeURIComponent(productId)}`, { params: { page, limit } })
@@ -176,6 +181,16 @@ export async function fetchOrder(orderId: string) {
 export async function fetchOrderInvoice(orderId: string) {
   const response = await AxiosInstance.get(`${endPoints.orders.list}/${encodeURIComponent(orderId)}/invoice`)
   return unwrap<any>(response.data)
+}
+
+export async function downloadOrderInvoice(invoiceId: string) {
+  const response = await AxiosInstance.post(`/invoices/${encodeURIComponent(invoiceId)}/download`)
+  return unwrap<{ invoiceNumber: string; downloadUrl?: string; storageUrl?: string }>(response.data)
+}
+
+export async function downloadOrderInvoicePdf(orderId: string) {
+  const response = await AxiosInstance.get(`/invoices/order/${encodeURIComponent(orderId)}/download`)
+  return unwrap<{ invoiceNumber: string; downloadUrl: string }>(response.data)
 }
 
 export async function cancelOrder(orderId: string) {
