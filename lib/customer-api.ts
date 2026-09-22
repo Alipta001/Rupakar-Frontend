@@ -188,9 +188,35 @@ export async function downloadOrderInvoice(invoiceId: string) {
   return unwrap<{ invoiceNumber: string; downloadUrl?: string; storageUrl?: string }>(response.data)
 }
 
+const invoiceDownloadRequests = new Map<string, Promise<{ invoiceNumber: string; downloadUrl: string }>>()
+const invoicePollIntervalMs = 2500
+const invoicePollAttempts = 6
+
+const waitForInvoice = () => new Promise((resolve) => window.setTimeout(resolve, invoicePollIntervalMs))
+
 export async function downloadOrderInvoicePdf(orderId: string) {
-  const response = await AxiosInstance.get(`/invoices/order/${encodeURIComponent(orderId)}/download`)
-  return unwrap<{ invoiceNumber: string; downloadUrl: string }>(response.data)
+  const existingRequest = invoiceDownloadRequests.get(orderId)
+  if (existingRequest) return existingRequest
+
+  const request = (async () => {
+    for (let attempt = 0; attempt < invoicePollAttempts; attempt += 1) {
+      try {
+        const response = await AxiosInstance.get(`/invoices/order/${encodeURIComponent(orderId)}/download`)
+        return unwrap<{ invoiceNumber: string; downloadUrl: string }>(response.data)
+      } catch (error: any) {
+        if (error?.response?.status !== 425 || attempt === invoicePollAttempts - 1) throw error
+        await waitForInvoice()
+      }
+    }
+    throw new Error('Invoice download polling ended unexpectedly')
+  })()
+
+  invoiceDownloadRequests.set(orderId, request)
+  try {
+    return await request
+  } finally {
+    invoiceDownloadRequests.delete(orderId)
+  }
 }
 
 export async function cancelOrder(orderId: string) {

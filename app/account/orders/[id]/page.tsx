@@ -49,9 +49,12 @@ export default function OrderDetailPage({ params }: Props) {
     retry: false,
   })
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
+  const [invoiceDownloadMessage, setInvoiceDownloadMessage] = useState('')
 
   const handleInvoiceDownload = async () => {
+    if (isDownloadingInvoice) return
     setIsDownloadingInvoice(true)
+    setInvoiceDownloadMessage('')
     try {
       const download = await downloadOrderInvoicePdf(id)
       const url = download.downloadUrl
@@ -63,6 +66,11 @@ export default function OrderDetailPage({ params }: Props) {
         anchor.download = `${download.invoiceNumber || invoice.invoiceNumber || 'rupakar-invoice'}.pdf`
         anchor.click()
       } else throw new Error('The invoice PDF is not ready yet.')
+    } catch (error: any) {
+      const status = error?.response?.status
+      setInvoiceDownloadMessage(status === 425
+        ? 'Your invoice is still being generated. Please try again shortly.'
+        : 'We could not download your invoice. Please try again shortly.')
     } finally {
       setIsDownloadingInvoice(false)
     }
@@ -159,6 +167,12 @@ export default function OrderDetailPage({ params }: Props) {
               {isDownloadingInvoice ? <FileText size={13} className="animate-pulse" /> : <Download size={13} />}
               {isDownloadingInvoice ? 'Preparing…' : invoice?.generationStatus === 'FAILED' ? 'Retry Invoice' : invoice?.generationStatus !== 'AVAILABLE' ? 'Preparing Invoice…' : 'Download Invoice'}
             </button>
+          )}
+
+          {invoiceDownloadMessage && (
+            <p className="basis-full text-right text-[#7A1F1F] font-sans text-xs" role="status">
+              {invoiceDownloadMessage}
+            </p>
           )}
 
           {isCancelled && (
