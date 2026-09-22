@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Chrome } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useQueryClient } from '@tanstack/react-query'
 import { AuthShell } from '@/components/auth-shell'
@@ -25,6 +25,14 @@ export default function LoginPage() {
   const queryClient = useQueryClient()
   const { loading } = useSelector((state: any) => state.auth)
   const router = useRouter()
+
+  const startGoogleAuth = () => {
+    const returnTo = typeof window !== 'undefined'
+      ? getSafeReturnTo(new URLSearchParams(window.location.search).get('returnTo'))
+      : '/account'
+    const authBase = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
+    window.location.assign(`${authBase}/auth/google?redirect=${encodeURIComponent(returnTo)}`)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -180,11 +188,22 @@ export default function LoginPage() {
           {loading ? 'Signing in...' : <>Sign In <ArrowRight size={16} strokeWidth={2} /></>}
         </motion.button>
 
-        {/* Divider */}
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          type="button"
+          onClick={startGoogleAuth}
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-[#D4C4B0] bg-white/80 hover:bg-[#F8F3EB] text-[#1E1A17] rounded-lg font-sans text-sm font-medium transition-all"
+        >
+          <Chrome size={16} strokeWidth={2} />
+          Continue with Google
+        </motion.button>
+
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          transition={{ duration: 0.5, delay: 0.35 }}
           className="relative py-4"
         >
           <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-[#D4C4B0] to-transparent" />

@@ -621,7 +621,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { User, Mail, Lock, Eye, EyeOff, Check, ArrowRight } from 'lucide-react'
+import { User, Mail, Lock, Eye, EyeOff, Check, ArrowRight, Chrome } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
@@ -707,6 +707,14 @@ export default function RegisterPage() {
   }
 
   const passwordsMatch = watchPassword === watchConfirmPassword && watchConfirmPassword.length > 0
+
+  const startGoogleAuth = () => {
+    const returnTo = typeof window !== 'undefined'
+      ? getSafeReturnTo(new URLSearchParams(window.location.search).get('returnTo'))
+      : '/account'
+    const authBase = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
+    window.location.assign(`${authBase}/auth/google?redirect=${encodeURIComponent(returnTo)}`)
+  }
 
   const onSubmit = async (data: RegisterFormData) => {
     console.log("Register payload: ", data.firstName, data.lastName, data.email, data.password)
@@ -959,6 +967,18 @@ export default function RegisterPage() {
           className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-[#C89B3C] to-[#B7792B] hover:from-[#B7792B] hover:to-[#A66B25] text-white rounded-lg font-sans text-sm font-medium tracking-[0.1em] uppercase transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#C89B3C]/20"
         >
           {loading ? 'Creating Account...' : <>Create Account <ArrowRight size={16} strokeWidth={2} /></>}
+        </motion.button>
+
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          type="button"
+          onClick={startGoogleAuth}
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-[#D4C4B0] bg-white/80 hover:bg-[#F8F3EB] text-[#1E1A17] rounded-lg font-sans text-sm font-medium transition-all"
+        >
+          <Chrome size={16} strokeWidth={2} />
+          Continue with Google
         </motion.button>
 
         {/* Login Link */}
