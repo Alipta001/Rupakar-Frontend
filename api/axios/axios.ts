@@ -26,8 +26,21 @@ export const AxiosInstance = axios.create({
   withCredentials: true,
 });
 
+export const RefreshAxiosInstance = axios.create({
+  baseURL: BaseURL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
+});
+
 let accessToken = "";
 let refreshPromise: Promise<string | null> | null = null;
+
+const shouldSkipRefresh = (url?: string) => {
+  if (!url) return false;
+  return /\/auth\/(login|register|verify-otp|forgot-password|reset-password|logout|refresh)/.test(url) || url.includes('/auth/refresh');
+};
 
 const getStoredAccessToken = () => {
   if (typeof window === "undefined") return "";
@@ -75,9 +88,9 @@ const triggerAuthExpired = () => {
   window.dispatchEvent(new Event("rupakar:auth-expired"));
 };
 
-const refreshAccessToken = async (): Promise<string | null> => {
+export const refreshAccessToken = async (): Promise<string | null> => {
   try {
-    const response = await axios.post(`${BaseURL}/auth/refresh`, {}, {
+    const response = await RefreshAxiosInstance.post('/auth/refresh', {}, {
       headers: { "Content-Type": "application/json" },
       withCredentials: true,
     });
@@ -133,30 +146,33 @@ AxiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const isAuthEndpoint = originalRequest?.url?.includes("/auth/") || originalRequest?.url?.includes("auth/");
 
-    // Skip token refresh logic for auth endpoints (login, register, refresh, etc.)
-    if (!originalRequest || isAuthEndpoint) {
+    if (!originalRequest || shouldSkipRefresh(originalRequest.url)) {
       return Promise.reject(error);
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      refreshPromise ??= refreshAccessToken();
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken();
+      }
 
       try {
         const newAccessToken = await refreshPromise;
 
-        if (newAccessToken) {
-          if (originalRequest.headers && typeof originalRequest.headers.set === "function") {
-            originalRequest.headers.set("Authorization", `Bearer ${newAccessToken}`);
-          } else {
-            originalRequest.headers = originalRequest.headers ?? {};
-            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          }
-          return AxiosInstance(originalRequest);
+        if (!newAccessToken) {
+          return Promise.reject(error);
         }
+
+        if (originalRequest.headers && typeof originalRequest.headers.set === "function") {
+          originalRequest.headers.set("Authorization", `Bearer ${newAccessToken}`);
+        } else {
+          originalRequest.headers = originalRequest.headers ?? {};
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        }
+
+        return AxiosInstance(originalRequest);
       } catch {
         setAccessToken(null);
         triggerAuthExpired();

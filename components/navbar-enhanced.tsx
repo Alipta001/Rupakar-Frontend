@@ -53,17 +53,22 @@ export default function NavbarEnhanced() {
           <Link href="/" className="flex-shrink-0">
             <motion.div
               whileHover={{ scale: 1.02 }}
-              className="text-center"
+              className="flex items-center gap-3 text-center"
             >
-              <span
-                className="block text-[#F8F4EE] tracking-[0.3em] uppercase text-xl"
-                style={{ fontFamily: 'var(--font-italiana), serif' }}
-              >
-                Rupakar
-              </span>
-              <span className="block text-[#C89B3C] tracking-[0.35em] uppercase text-[9px] mt-0.5 font-sans">
-                Artisan Marketplace
-              </span>
+              <div className="relative h-10 w-10 overflow-hidden rounded-full border border-[#C89B3C]/30 bg-white/5 shadow-sm">
+                <Image src="/Rupakar-logo.jpeg" alt="Rupakar logo" fill className="object-cover" priority />
+              </div>
+              <div>
+                <span
+                  className="block text-[#F8F4EE] tracking-[0.3em] uppercase text-xl"
+                  style={{ fontFamily: 'var(--font-italiana), serif' }}
+                >
+                  Rupakar
+                </span>
+                <span className="block text-[#C89B3C] tracking-[0.35em] uppercase text-[9px] mt-0.5 font-sans">
+                  Artisan Marketplace
+                </span>
+              </div>
             </motion.div>
           </Link>
 

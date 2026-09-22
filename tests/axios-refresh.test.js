@@ -13,19 +13,25 @@ function loadAxiosModule(refreshRequest) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
     fileName: axiosSourcePath,
   }).outputText
-  const client = (request) => {
-    client.retriedRequests.push(request)
-    return Promise.resolve({ data: { retried: true } })
-  }
-  client.retriedRequests = []
-  client.interceptors = {
-    request: { use: () => undefined },
-    response: { use: (_fulfilled, rejected) => { client.reject = rejected } },
-  }
+
+  const sharedClient = (() => {
+    const client = (request) => {
+      client.retriedRequests.push(request)
+      return Promise.resolve({ data: { retried: true } })
+    }
+    client.retriedRequests = []
+    client.interceptors = {
+      request: { use: () => undefined },
+      response: { use: (_fulfilled, rejected) => { client.reject = rejected } },
+    }
+    client.post = refreshRequest
+    return client
+  })()
+
   const axios = {
     __esModule: true,
     default: {
-      create: () => client,
+      create: () => sharedClient,
       post: refreshRequest,
     },
   }
@@ -54,7 +60,7 @@ function loadAxiosModule(refreshRequest) {
     moduleInstance.filename = axiosSourcePath
     moduleInstance.paths = Module._nodeModulePaths(path.dirname(axiosSourcePath))
     moduleInstance._compile(compiled, axiosSourcePath)
-    return { client, exports: moduleInstance.exports, events, restoreWindow: () => {
+    return { client: sharedClient, exports: moduleInstance.exports, events, restoreWindow: () => {
       Module._load = originalLoad
       global.window = originalWindow
     } }
@@ -155,6 +161,64 @@ test('notifies onTokenRefreshed subscribers with new token', async () => {
 
     assert.deepEqual(received, ['token-for-subscribers'])
     unsub()
+  } finally {
+    restoreWindow()
+  }
+})
+
+test('uses a dedicated refresh client that bypasses the main response interceptor', async () => {
+  let refreshCalls = 0
+  const { exports, restoreWindow } = loadAxiosModule(async () => {
+    refreshCalls += 1
+    return { data: { data: { accessToken: 'fresh-access-token' } } }
+  })
+
+  try {
+    assert.ok(exports.RefreshAxiosInstance)
+    assert.equal(typeof exports.refreshAccessToken, 'function')
+    await exports.refreshAccessToken()
+    assert.equal(refreshCalls, 1)
+  } finally {
+    restoreWindow()
+  }
+})
+
+test('does not recursively trigger a refresh when a request is already refreshing', async () => {
+  let refreshCalls = 0
+  let releaseRefresh
+  const { client, restoreWindow } = loadAxiosModule(() => {
+    refreshCalls += 1
+    return new Promise((resolve) => {
+      releaseRefresh = () => resolve({ data: { data: { accessToken: 'fresh-access-token' } } })
+    })
+  })
+
+  try {
+    const first = client.reject({ config: { url: '/orders', headers: {} }, response: { status: 401 } })
+    const second = client.reject({ config: { url: '/wishlist', headers: {} }, response: { status: 401 } })
+    releaseRefresh()
+    await Promise.all([first, second])
+    assert.equal(refreshCalls, 1)
+  } finally {
+    restoreWindow()
+  }
+})
+
+test('retries each request at most once', async () => {
+  let refreshCalls = 0
+  const { client, restoreWindow } = loadAxiosModule(async () => {
+    refreshCalls += 1
+    return { data: { data: { accessToken: 'fresh-access-token' } } }
+  })
+
+  try {
+    const request = { config: { url: '/profile', headers: {} }, response: { status: 401 } }
+    await client.reject(request)
+    assert.equal(refreshCalls, 1)
+
+    const retry = await client.reject({ config: { url: '/profile', headers: {}, _retry: true }, response: { status: 401 } })
+      .catch((error) => error)
+    assert.equal(retry.response.status, 401)
   } finally {
     restoreWindow()
   }
