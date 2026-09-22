@@ -7,7 +7,7 @@ const nextConfig = {
     const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim()
     const backendApiUrl = configuredApiUrl && !configuredApiUrl.includes(',')
       ? configuredApiUrl.replace(/\/$/, '')
-      : 'http://localhost:4000/api/v1'
+      : 'https://rupakar-backend.onrender.com/api/v1'
 
     return [
       {
