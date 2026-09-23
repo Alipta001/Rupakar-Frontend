@@ -260,10 +260,9 @@ export default function CheckoutPage() {
         : order
     },
     onSuccess: (data: any) => {
-      const orderId = data?.orderNumber ?? data?._id ?? data?.id ?? data?.orderId ?? 'new'
       queryClient.invalidateQueries({ queryKey: ['cart'] })
       queryClient.invalidateQueries({ queryKey: ['orders'] })
-      setOrderSuccess(String(orderId))
+      router.replace('/account/orders')
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.error?.message ?? err?.response?.data?.message ?? err?.message ?? 'Failed to place order. Please try again.'
