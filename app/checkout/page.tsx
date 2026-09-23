@@ -218,6 +218,7 @@ export default function CheckoutPage() {
       try {
         const Razorpay = await loadRazorpayCheckout()
         await new Promise<void>((resolve, reject) => {
+          let resolved = false
           const checkout = new Razorpay({
             key: payment.publicKey,
             amount: Math.round(Number(payment.amount) * 100),
@@ -228,22 +229,37 @@ export default function CheckoutPage() {
             handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
               paymentSubmitted = true
               let confirmationError: unknown
-              try {
-                for (let attempt = 0; attempt < 2; attempt += 1) {
-                  try {
-                    await confirmPayment({ orderId, ...response })
-                    resolve()
-                    return
-                  } catch (error) {
-                    confirmationError = error
-                  }
+              for (let attempt = 0; attempt < 3; attempt += 1) {
+                try {
+                  await confirmPayment({ orderId, ...response })
+                  resolved = true
+                  resolve()
+                  return
+                } catch (error) {
+                  confirmationError = error
+                  await new Promise((r) => setTimeout(r, 1000))
                 }
-                reject(confirmationError)
-              } catch (error) {
-                reject(error)
               }
+              // Even if confirmPayment timed out or errored, verify if the backend confirmed it
+              try {
+                const checkedOrder = await fetchOrder(orderId)
+                if (checkedOrder?.paymentStatus === 'PAID' || checkedOrder?.status === 'CONFIRMED') {
+                  resolved = true
+                  resolve()
+                  return
+                }
+              } catch {
+                // ignore
+              }
+              reject(confirmationError)
             },
-            modal: { ondismiss: () => reject(new Error('Payment was cancelled')) },
+            modal: {
+              ondismiss: () => {
+                if (!paymentSubmitted && !resolved) {
+                  reject(new Error('Payment was cancelled'))
+                }
+              },
+            },
           })
           checkout.open()
         })
@@ -256,9 +272,15 @@ export default function CheckoutPage() {
         throw error
       }
 
-      return paymentMethod === 'razorpay'
-        ? await fetchOrder(orderId)
-        : order
+      let finalOrder = order
+      if (paymentMethod === 'razorpay') {
+        try {
+          finalOrder = await fetchOrder(orderId)
+        } catch {
+          finalOrder = { ...order, _id: orderId, id: orderId }
+        }
+      }
+      return finalOrder
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['cart'] })
@@ -269,6 +291,7 @@ export default function CheckoutPage() {
       })
       const targetOrderId = String(data?._id ?? data?.id ?? '')
       if (targetOrderId) {
+        setOrderSuccess(targetOrderId)
         router.replace(`/account/orders/${targetOrderId}`)
       } else {
         router.replace('/account/orders')
