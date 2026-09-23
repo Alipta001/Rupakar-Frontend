@@ -5,8 +5,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, MapPin, FileText, Download } from 'lucide-react'
-import { downloadOrderInvoicePdf, fetchOrder, fetchOrderInvoice, cancelOrder } from '@/lib/customer-api'
+import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, MapPin, FileText, Download, X } from 'lucide-react'
+import { downloadOrderInvoicePdf, fetchOrder, fetchOrderInvoice, cancelOrder, createCancellationRequest, fetchOrderCancellationRequests } from '@/lib/customer-api'
+import { toast } from '@/hooks/use-toast'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -90,6 +91,44 @@ export default function OrderDetailPage({ params }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', id] })
       queryClient.invalidateQueries({ queryKey: ['orders'] })
+    },
+  })
+
+  const { data: cancellationRequests = [] } = useQuery({
+    queryKey: ['order-cancellations', id],
+    queryFn: () => fetchOrderCancellationRequests(id),
+    retry: false,
+  })
+
+  const [cancellingItem, setCancellingItem] = useState<any>(null)
+  const [cancelReason, setCancelReason] = useState('Ordered by mistake')
+  const [cancelNote, setCancelNote] = useState('')
+  const [cancelError, setCancelError] = useState('')
+
+  const requestCancellationMutation = useMutation({
+    mutationFn: async () => {
+      if (!cancellingItem) return
+      setCancelError('')
+      return createCancellationRequest(id, {
+        variantId: String(cancellingItem.variantId),
+        quantity: Number(cancellingItem.quantity || 1),
+        reason: cancelReason,
+        customerNote: cancelNote,
+      })
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Cancellation Requested',
+        description: 'Your cancellation request has been submitted for seller review.',
+      })
+      setCancellingItem(null)
+      setCancelNote('')
+      queryClient.invalidateQueries({ queryKey: ['order', id] })
+      queryClient.invalidateQueries({ queryKey: ['order-cancellations', id] })
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Unable to submit cancellation request'
+      setCancelError(msg)
     },
   })
 
@@ -257,18 +296,58 @@ export default function OrderDetailPage({ params }: Props) {
                   {group.items.map((item: any, i: number) => {
                     const imageUrl = itemImageUrl(item)
                     const unitPrice = Number(item.unitPrice ?? item.price ?? item.productSnapshot?.price ?? 0)
-                    return <div key={`${item.variantId ?? item.sku ?? i}`} className="flex items-center gap-4 py-3 border-b border-[#EFE3D3] last:border-0">
-                      <div className="w-16 h-16 bg-[#EFE3D3] flex-shrink-0 overflow-hidden rounded">
-                        {imageUrl ? <Image src={imageUrl} alt={itemName(item)} width={64} height={64} className="w-full h-full object-cover" unoptimized /> : <Package aria-label="Product image unavailable" size={22} className="m-[21px] text-[#A88D70]" />}
+                    const itemRequest = Array.isArray(cancellationRequests)
+                      ? cancellationRequests.find((r: any) => String(r.variantId) === String(item.variantId))
+                      : null
+                    const isItemCancellable = !isCancelled && !itemRequest && ['PENDING_PAYMENT', 'PAID', 'CONFIRMED', 'PROCESSING', 'PACKED'].includes(String(group.status || order.status).toUpperCase())
+
+                    return <div key={`${item.variantId ?? item.sku ?? i}`} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3 border-b border-[#EFE3D3] last:border-0">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className="w-16 h-16 bg-[#EFE3D3] flex-shrink-0 overflow-hidden rounded">
+                          {imageUrl ? <Image src={imageUrl} alt={itemName(item)} width={64} height={64} className="w-full h-full object-cover" unoptimized /> : <Package aria-label="Product image unavailable" size={22} className="m-[21px] text-[#A88D70]" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-sans text-sm text-[#1E1A17] font-medium">{itemName(item)}</p>
+                          {itemVariant(item) && <p className="font-sans text-[10px] text-[#C89B3C] tracking-[0.06em] uppercase">{itemVariant(item)}</p>}
+                          <p className="font-sans text-xs text-[#5B4B3F] mt-0.5">SKU: {item.sku ?? item.productSnapshot?.sku ?? '—'} · Qty: {item.quantity}</p>
+                          {itemRequest && (
+                            <div className="mt-1">
+                              {itemRequest.status === 'PENDING' && (
+                                <span className="inline-flex items-center text-[10px] font-sans px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                  Cancellation Requested (Pending Seller Approval)
+                                </span>
+                              )}
+                              {itemRequest.status === 'APPROVED' && (
+                                <span className="inline-flex items-center text-[10px] font-sans px-2 py-0.5 rounded bg-red-50 text-red-700 border border-red-200">
+                                  Cancelled · Refund Initiated
+                                </span>
+                              )}
+                              {itemRequest.status === 'REJECTED' && (
+                                <span className="inline-flex items-center text-[10px] font-sans px-2 py-0.5 rounded bg-stone-100 text-stone-600 border border-stone-300" title={itemRequest.rejectionReason}>
+                                  Cancellation Declined ({itemRequest.rejectionReason || 'Seller rejected'})
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-sans text-sm text-[#1E1A17] font-medium">{itemName(item)}</p>
-                        {itemVariant(item) && <p className="font-sans text-[10px] text-[#C89B3C] tracking-[0.06em] uppercase">{itemVariant(item)}</p>}
-                        <p className="font-sans text-xs text-[#5B4B3F] mt-0.5">SKU: {item.sku ?? item.productSnapshot?.sku ?? '—'} · Qty: {item.quantity}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-sans text-sm text-[#1E1A17] font-semibold">₹{Number(item.lineTotal ?? unitPrice * Number(item.quantity ?? 1)).toLocaleString()}</p>
-                        <p className="font-sans text-[10px] text-[#5B4B3F]">₹{unitPrice.toLocaleString()} each</p>
+                      <div className="text-right flex sm:flex-col items-end justify-between sm:justify-center">
+                        <div>
+                          <p className="font-sans text-sm text-[#1E1A17] font-semibold">₹{Number(item.lineTotal ?? unitPrice * Number(item.quantity ?? 1)).toLocaleString()}</p>
+                          <p className="font-sans text-[10px] text-[#5B4B3F]">₹{unitPrice.toLocaleString()} each</p>
+                        </div>
+                        {isItemCancellable && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCancellingItem(item)
+                              setCancelError('')
+                            }}
+                            className="mt-1 text-[11px] font-sans text-[#7A1F1F] underline hover:text-[#521313]"
+                          >
+                            Cancel item
+                          </button>
+                        )}
                       </div>
                     </div>
                   })}
@@ -337,6 +416,82 @@ export default function OrderDetailPage({ params }: Props) {
           </div>
         </motion.div>
       </div>
+
+      {/* Cancellation Request Modal */}
+      {cancellingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#EFE3D3] pb-3">
+              <h3 className="text-base font-semibold text-[#1E1A17]">Request Item Cancellation</h3>
+              <button
+                type="button"
+                onClick={() => setCancellingItem(null)}
+                className="text-[#5B4B3F] hover:text-[#1E1A17] p-1"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-[#1E1A17]">{itemName(cancellingItem)}</p>
+              <p className="text-xs text-[#5B4B3F] mt-0.5">
+                Qty: {cancellingItem.quantity} · Estimated refund: ₹{Number(cancellingItem.lineTotal ?? (cancellingItem.unitPrice || 0) * cancellingItem.quantity).toLocaleString()}
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="cancel-reason-select" className="text-xs font-sans uppercase tracking-[0.05em] text-[#5B4B3F]">Reason for cancellation</label>
+              <select
+                id="cancel-reason-select"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full border border-[#D4C4B0] rounded p-2 text-sm text-[#1E1A17] bg-[#FAF8F5] focus:outline-none focus:border-[#C89B3C]"
+              >
+                <option value="Ordered by mistake">Ordered by mistake</option>
+                <option value="Found cheaper elsewhere">Found cheaper elsewhere</option>
+                <option value="Delivery time too long">Delivery time too long</option>
+                <option value="Item not needed anymore">Item not needed anymore</option>
+                <option value="Incorrect address selected">Incorrect address selected</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="cancel-note-textarea" className="text-xs font-sans uppercase tracking-[0.05em] text-[#5B4B3F]">Additional Note (Optional)</label>
+              <textarea
+                id="cancel-note-textarea"
+                value={cancelNote}
+                onChange={(e) => setCancelNote(e.target.value)}
+                rows={3}
+                placeholder="Provide any additional details for the seller..."
+                className="w-full border border-[#D4C4B0] rounded p-2 text-sm text-[#1E1A17] bg-[#FAF8F5] focus:outline-none focus:border-[#C89B3C]"
+              />
+            </div>
+
+            {cancelError && (
+              <p className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">{cancelError}</p>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCancellingItem(null)}
+                className="px-4 py-2 border border-[#D4C4B0] text-[#5B4B3F] text-xs font-sans uppercase rounded hover:bg-[#FAF8F5]"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                disabled={requestCancellationMutation.isPending}
+                onClick={() => requestCancellationMutation.mutate()}
+                className="px-4 py-2 bg-[#7A1F1F] text-white text-xs font-sans uppercase rounded hover:bg-[#5E1717] disabled:opacity-50"
+              >
+                {requestCancellationMutation.isPending ? 'Submitting…' : 'Submit Cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

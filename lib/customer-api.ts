@@ -224,6 +224,16 @@ export async function cancelOrder(orderId: string) {
   return unwrap<any>(response.data)
 }
 
+export async function createCancellationRequest(orderId: string, payload: { variantId: string; quantity?: number; reason: string; customerNote?: string }) {
+  const response = await AxiosInstance.post(`${endPoints.orders.list}/${orderId}/cancellation-requests`, payload)
+  return unwrap<any>(response.data)
+}
+
+export async function fetchOrderCancellationRequests(orderId: string) {
+  const response = await AxiosInstance.get(`${endPoints.orders.list}/${orderId}/cancellation-requests`)
+  return unwrap<any[]>(response.data)
+}
+
 export async function previewCheckout(payload: Record<string, any> = {}) {
   const response = await AxiosInstance.post(endPoints.checkout.preview, payload)
   return unwrap<any>(response.data)

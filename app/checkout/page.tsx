@@ -13,6 +13,7 @@ import { cancelOrder, confirmPayment, createAddress, createOrder, fetchAddresses
 import { refreshCheckoutAfterPaymentCancellation } from '@/lib/checkout-state'
 import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
 import { useSelector } from 'react-redux'
+import { toast } from '@/hooks/use-toast'
 
 type Step = 'address' | 'payment' | 'review'
 
@@ -262,7 +263,16 @@ export default function CheckoutPage() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['cart'] })
       queryClient.invalidateQueries({ queryKey: ['orders'] })
-      router.replace('/account/orders')
+      toast({
+        title: 'Order Placed',
+        description: 'Your order has been placed successfully.',
+      })
+      const targetOrderId = String(data?._id ?? data?.id ?? '')
+      if (targetOrderId) {
+        router.replace(`/account/orders/${targetOrderId}`)
+      } else {
+        router.replace('/account/orders')
+      }
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.error?.message ?? err?.response?.data?.message ?? err?.message ?? 'Failed to place order. Please try again.'
