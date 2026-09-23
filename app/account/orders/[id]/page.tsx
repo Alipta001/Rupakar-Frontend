@@ -13,14 +13,18 @@ interface Props {
 }
 
 const ORDER_STEPS = [
-  { status: 'PENDING', label: 'Order Placed', icon: Clock, color: 'text-yellow-600' },
+  { status: 'PENDING_PAYMENT', label: 'Order Placed', icon: Clock, color: 'text-yellow-600' },
   { status: 'CONFIRMED', label: 'Confirmed', icon: CheckCircle, color: 'text-blue-600' },
   { status: 'PROCESSING', label: 'Processing', icon: Package, color: 'text-purple-600' },
+  { status: 'PACKED', label: 'Packed', icon: Package, color: 'text-violet-600' },
+  { status: 'READY_TO_SHIP', label: 'Ready to Ship', icon: Truck, color: 'text-indigo-600' },
   { status: 'SHIPPED', label: 'Shipped', icon: Truck, color: 'text-indigo-600' },
+  { status: 'IN_TRANSIT', label: 'In Transit', icon: Truck, color: 'text-sky-600' },
+  { status: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', icon: Truck, color: 'text-amber-600' },
   { status: 'DELIVERED', label: 'Delivered', icon: CheckCircle, color: 'text-green-600' },
 ]
 
-const STATUS_ORDER = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED']
+const STATUS_ORDER = ['PENDING_PAYMENT', 'CONFIRMED', 'PROCESSING', 'PACKED', 'READY_TO_SHIP', 'SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED']
 
 const itemImageUrl = (item: any) => {
   const snapshot = item?.productSnapshot ?? {}
@@ -41,6 +45,11 @@ export default function OrderDetailPage({ params }: Props) {
     queryKey: ['order', id],
     queryFn: () => fetchOrder(id),
     retry: false,
+    refetchInterval: (query) => {
+      const currentStatus = String(query.state.data?.status ?? '').toUpperCase();
+      return ['DELIVERED', 'CANCELLED', 'FAILED', 'RETURNED', 'REFUNDED'].includes(currentStatus) ? false : 10000;
+    },
+    refetchIntervalInBackground: true,
   })
   const { data: invoice } = useQuery({
     queryKey: ['order-invoice', id],
@@ -106,9 +115,9 @@ export default function OrderDetailPage({ params }: Props) {
     )
   }
 
-  const statusUpperCase = (order.status ?? 'PENDING').toUpperCase()
+  const statusUpperCase = String(order.status ?? 'PENDING_PAYMENT').toUpperCase()
   const isCancelled = statusUpperCase === 'CANCELLED'
-  const canCancel = ['PENDING', 'CONFIRMED'].includes(statusUpperCase)
+  const canCancel = ['PENDING_PAYMENT', 'PAID', 'CONFIRMED'].includes(statusUpperCase)
   const currentStepIndex = isCancelled ? -1 : STATUS_ORDER.indexOf(statusUpperCase)
   const items = Array.isArray(order.items) ? order.items : []
   const vendorOrders = Array.isArray(order.vendorOrders) ? order.vendorOrders.filter((vendorOrder: any) => vendorOrder && typeof vendorOrder === 'object') : []

@@ -12,12 +12,17 @@ import { fetchOrdersPage } from '@/lib/customer-api'
 const statusConfig = {
   pending: { icon: AlertCircle, color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
   pending_payment: { icon: AlertCircle, color: 'bg-yellow-100 text-yellow-800', label: 'Pending Payment' },
+  paid: { icon: CheckCircle, color: 'bg-green-100 text-green-800', label: 'Paid' },
   confirmed: { icon: CheckCircle, color: 'bg-green-100 text-green-800', label: 'Confirmed' },
+  processing: { icon: Package, color: 'bg-blue-100 text-blue-800', label: 'Processing' },
+  packed: { icon: Package, color: 'bg-indigo-100 text-indigo-800', label: 'Packed' },
+  ready_to_ship: { icon: Truck, color: 'bg-indigo-100 text-indigo-800', label: 'Ready to Ship' },
+  shipped: { icon: Truck, color: 'bg-purple-100 text-purple-800', label: 'Shipped' },
+  in_transit: { icon: Truck, color: 'bg-violet-100 text-violet-800', label: 'In Transit' },
+  out_for_delivery: { icon: Truck, color: 'bg-orange-100 text-orange-800', label: 'Out for Delivery' },
+  delivered: { icon: CheckCircle, color: 'bg-green-100 text-green-800', label: 'Delivered' },
   failed: { icon: AlertCircle, color: 'bg-red-100 text-red-800', label: 'Failed' },
   cancelled: { icon: AlertCircle, color: 'bg-red-100 text-red-800', label: 'Cancelled' },
-  processing: { icon: Package, color: 'bg-blue-100 text-blue-800', label: 'Processing' },
-  shipped: { icon: Truck, color: 'bg-purple-100 text-purple-800', label: 'Shipped' },
-  delivered: { icon: CheckCircle, color: 'bg-green-100 text-green-800', label: 'Delivered' },
 } as const
 
 export default function OrdersPage() {
@@ -30,6 +35,15 @@ export default function OrdersPage() {
     queryFn: () => fetchOrdersPage(page, 12, status),
     enabled: authHydrated,
     retry: false,
+    refetchInterval: (query) => {
+      const items = Array.isArray(query.state.data?.items) ? query.state.data.items : []
+      const hasActiveOrder = items.some((order: any) => {
+        const currentStatus = String(order?.status ?? '').toUpperCase();
+        return !['DELIVERED', 'CANCELLED', 'FAILED'].includes(currentStatus)
+      })
+      return hasActiveOrder ? 10000 : false
+    },
+    refetchIntervalInBackground: true,
   })
 
   const orders = Array.isArray(data?.items) ? data.items : []
