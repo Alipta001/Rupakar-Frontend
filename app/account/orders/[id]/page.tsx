@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, MapPin, FileText, Download, X } from 'lucide-react'
 import { downloadOrderInvoicePdf, fetchOrder, fetchOrderInvoice, cancelOrder, createCancellationRequest, fetchOrderCancellationRequests } from '@/lib/customer-api'
+import { getCustomerErrorMessage } from '@/lib/api-errors'
 import { toast } from '@/hooks/use-toast'
 
 interface Props {
@@ -86,11 +87,30 @@ export default function OrderDetailPage({ params }: Props) {
     }
   }
 
+  const [cancelOrderError, setCancelOrderError] = useState('')
+
   const cancelMutation = useMutation({
-    mutationFn: () => cancelOrder(id),
+    mutationFn: () => {
+      setCancelOrderError('')
+      return cancelOrder(id)
+    },
     onSuccess: () => {
+      setCancelOrderError('')
+      toast({
+        title: 'Order Cancelled',
+        description: 'Your order has been cancelled successfully.',
+      })
       queryClient.invalidateQueries({ queryKey: ['order', id] })
       queryClient.invalidateQueries({ queryKey: ['orders'] })
+    },
+    onError: (err: any) => {
+      const msg = getCustomerErrorMessage(err, 'order')
+      setCancelOrderError(msg)
+      toast({
+        variant: 'destructive',
+        title: 'Cancellation Failed',
+        description: msg,
+      })
     },
   })
 
@@ -109,6 +129,9 @@ export default function OrderDetailPage({ params }: Props) {
     mutationFn: async () => {
       if (!cancellingItem) return
       setCancelError('')
+      if (!cancelReason || !cancelReason.trim()) {
+        throw new Error('Please select a cancellation reason before continuing.')
+      }
       return createCancellationRequest(id, {
         variantId: String(cancellingItem.variantId),
         quantity: Number(cancellingItem.quantity || 1),
@@ -123,11 +146,12 @@ export default function OrderDetailPage({ params }: Props) {
       })
       setCancellingItem(null)
       setCancelNote('')
+      setCancelError('')
       queryClient.invalidateQueries({ queryKey: ['order', id] })
       queryClient.invalidateQueries({ queryKey: ['order-cancellations', id] })
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.message || err?.message || 'Unable to submit cancellation request'
+      const msg = getCustomerErrorMessage(err, 'order')
       setCancelError(msg)
     },
   })
@@ -231,6 +255,19 @@ export default function OrderDetailPage({ params }: Props) {
           )}
         </div>
       </motion.div>
+
+      {cancelOrderError && (
+        <div role="alert" className="border border-[#7A1F1F]/40 bg-[#7A1F1F]/10 text-[#7A1F1F] p-4 text-xs font-sans tracking-[0.02em] flex items-start gap-3 rounded-md">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-semibold mb-0.5">Cancellation could not be completed</p>
+            <p>{cancelOrderError}</p>
+          </div>
+          <button onClick={() => setCancelOrderError('')} aria-label="Dismiss error" className="text-[#7A1F1F] hover:opacity-75">
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Status timeline */}
       {!isCancelled && (
