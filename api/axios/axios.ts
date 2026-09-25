@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const defaultProductionServerApiUrl = "https://rupakar-backend.onrender.com/api/v1";
+const defaultProductionServerApiUrl = "https://api.rupakar.com/api/v1";
 
 const resolveApiBaseUrl = () => {
   const configuredUrl = (typeof window === "undefined"

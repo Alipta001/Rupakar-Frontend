@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Provider, useDispatch, useSelector } from 'react-redux'
 import { store } from '../store/store';
 import { setAuth, markAuthHydrated, AUTH_USER_STORAGE_KEY, fetchCurrentUserThunk } from '../slice/authSlice/authSlice'
-import { ACCESS_TOKEN_STORAGE_KEY, onTokenRefreshed } from '../../api/axios/axios'
+import { ACCESS_TOKEN_STORAGE_KEY, onTokenRefreshed, refreshAccessToken } from '../../api/axios/axios'
 
 interface ProvidersProps {
   children: ReactNode;
@@ -33,8 +33,20 @@ function AuthHydrator({ children }: { children: ReactNode }) {
 
     window.addEventListener('rupakar:auth-expired', handleAuthExpired)
 
+    let tokenFromUrl: string | null = null
+    try {
+      const urlParams = new URLSearchParams(window.location.search)
+      tokenFromUrl = urlParams.get('token')
+      if (tokenFromUrl) {
+        window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, tokenFromUrl)
+        urlParams.delete('token')
+        const newSearch = urlParams.toString() ? `?${urlParams.toString()}` : ''
+        window.history.replaceState(null, '', `${window.location.pathname}${newSearch}${window.location.hash}`)
+      }
+    } catch {}
+
     const savedUser = window.localStorage.getItem(AUTH_USER_STORAGE_KEY)
-    const token = window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? store.getState().auth.token
+    const token = tokenFromUrl || window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? store.getState().auth.token
 
     if (token) {
       if (savedUser) {
@@ -53,9 +65,23 @@ function AuthHydrator({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['orders'] })
       queryClient.invalidateQueries({ queryKey: ['wishlist'] })
       dispatch(fetchCurrentUserThunk())
+      dispatch(markAuthHydrated())
+    } else {
+      refreshAccessToken()
+        .then((newToken) => {
+          if (newToken) {
+            dispatch(setAuth({ token: newToken, isAuthenticated: true }))
+            queryClient.invalidateQueries({ queryKey: ['cart'] })
+            queryClient.invalidateQueries({ queryKey: ['orders'] })
+            queryClient.invalidateQueries({ queryKey: ['wishlist'] })
+            dispatch(fetchCurrentUserThunk())
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          dispatch(markAuthHydrated())
+        })
     }
-
-    dispatch(markAuthHydrated())
 
     return () => window.removeEventListener('rupakar:auth-expired', handleAuthExpired)
   }, [dispatch, queryClient])
