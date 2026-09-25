@@ -56,6 +56,7 @@ export default function ProductsPage() {
   const {
     data: products = [],
     isLoading,
+    isPending,
     isError,
     error,
     refetch,
@@ -264,7 +265,7 @@ export default function ProductsPage() {
           </AnimatePresence>
 
           {/* Products grid */}
-          {(isLoading || isFetching) && products.length === 0 ? (
+          {(isPending || isLoading || isFetching) && products.length === 0 ? (
             <ProductGridSkeleton count={8} />
           ) : isError && products.length === 0 ? (
             <ErrorState

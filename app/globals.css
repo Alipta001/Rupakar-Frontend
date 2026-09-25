@@ -191,7 +191,7 @@
 .skeleton-shimmer {
   position: relative;
   overflow: hidden;
-  background-color: rgba(212, 196, 176, 0.3);
+  background-color: #E2D2BE;
 }
 
 .skeleton-shimmer::after {
@@ -202,10 +202,10 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0.65) 50%,
     transparent 100%
   );
-  animation: skeleton-shimmer 1.8s infinite ease-in-out;
+  animation: skeleton-shimmer 1.6s infinite ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {

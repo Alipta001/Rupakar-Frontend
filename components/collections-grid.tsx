@@ -33,6 +33,7 @@ export default function CollectionsGrid() {
   const {
     data: catalog = [],
     isLoading,
+    isPending,
     isFetching,
     isError,
     error,
@@ -152,14 +153,14 @@ export default function CollectionsGrid() {
         </div>
 
         {/* Count */}
-        {!isLoading && (!isFetching || sorted.length > 0) && !isError && (
+        {!isPending && !isLoading && (!isFetching || sorted.length > 0) && !isError && (
           <p className="text-[#5B4B3F] font-sans text-xs tracking-[0.1em] mb-8">
             {sorted.length} {sorted.length === 1 ? 'piece' : 'pieces'}
           </p>
         )}
 
         {/* Content State Separation */}
-        {(isLoading || isFetching) && sorted.length === 0 ? (
+        {(isPending || isLoading || isFetching) && sorted.length === 0 ? (
           <ProductGridSkeleton count={8} columns={4} />
         ) : isError && sorted.length === 0 ? (
           <ErrorState

@@ -15,7 +15,9 @@ export function ProductCardSkeleton({
   return (
     <div className={`group flex flex-col ${className}`}>
       {/* Product Image */}
-      <Skeleton className={`w-full ${aspectClass} mb-3.5`} rounded="none" />
+      <div className={`relative overflow-hidden ${aspectClass} mb-3.5 rounded-sm border border-[#D4C4B0]/60 bg-[#E2D2BE]`}>
+        <Skeleton className="w-full h-full" rounded="none" />
+      </div>
 
       {/* Craft / Category */}
       <Skeleton className="w-20 h-2.5 mb-2" rounded="sm" />

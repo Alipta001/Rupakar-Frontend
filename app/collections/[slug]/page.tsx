@@ -44,6 +44,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
   const {
     data: productItems = [],
     isLoading,
+    isPending,
     isError,
     error,
     refetch,
@@ -79,7 +80,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
           <div className="mt-8 h-px w-full bg-[#D4C4B0]" />
           <div className="mt-5 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.2em] text-[#6B3E26]">
             <span>
-              {isLoading && productItems.length === 0
+              {(isPending || isLoading) && productItems.length === 0
                 ? 'Loading collection pieces…'
                 : isFetching
                 ? `Updating… (${productItems.length} pieces)`
@@ -106,7 +107,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
             </span>
           </div>
 
-          {isLoading && productItems.length === 0 ? (
+          {(isPending || isLoading || isFetching) && productItems.length === 0 ? (
             <ProductGridSkeleton count={8} />
           ) : isError && productItems.length === 0 ? (
             <ErrorState error={error} onRetry={() => refetch()} className="py-16" />

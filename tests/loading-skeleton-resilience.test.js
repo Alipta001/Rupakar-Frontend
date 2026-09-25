@@ -112,35 +112,41 @@ test('Safe idempotent GET requests can be retried while mutations are never retr
   assert.equal(shouldRetryRequest('patch', 502, 0), false)
 })
 
-test('Category/filter transitions: isFetching && count === 0 must render SKELETON, never EMPTY_STATE', () => {
-  function computeFilterTransitionState({ isLoading, isFetching, count, isError }) {
-    if ((isLoading || isFetching) && count === 0) {
+test('Category/filter transitions: isPending || isFetching && count === 0 must render SKELETON, never EMPTY_STATE', () => {
+  function computeFilterTransitionState({ isPending, isLoading, isFetching, count, isError }) {
+    if ((isPending || isLoading || isFetching) && count === 0) {
       return 'SHOW_SKELETON'
     }
     if (isError && count === 0) {
       return 'SHOW_ERROR_STATE'
     }
-    if (!isLoading && !isFetching && !isError && count === 0) {
+    if (!isPending && !isLoading && !isFetching && !isError && count === 0) {
       return 'SHOW_EMPTY_STATE'
     }
     return 'SHOW_DATA'
   }
 
-  // When category changes, TanStack Query isFetching is true while new items load:
+  // On initial mount / SSR before fetch starts (fetchStatus idle, isPending true, isFetching false):
   assert.equal(
-    computeFilterTransitionState({ isLoading: false, isFetching: true, count: 0, isError: false }),
+    computeFilterTransitionState({ isPending: true, isLoading: false, isFetching: false, count: 0, isError: false }),
     'SHOW_SKELETON'
   )
 
-  // Only when both loading and fetching are complete with 0 items does empty state show:
+  // When category changes, TanStack Query isFetching is true while new items load:
   assert.equal(
-    computeFilterTransitionState({ isLoading: false, isFetching: false, count: 0, isError: false }),
+    computeFilterTransitionState({ isPending: false, isLoading: false, isFetching: true, count: 0, isError: false }),
+    'SHOW_SKELETON'
+  )
+
+  // Only when query is completely resolved with 0 items does empty state show:
+  assert.equal(
+    computeFilterTransitionState({ isPending: false, isLoading: false, isFetching: false, count: 0, isError: false }),
     'SHOW_EMPTY_STATE'
   )
 
   // With cached items during background refetch, data remains visible:
   assert.equal(
-    computeFilterTransitionState({ isLoading: false, isFetching: true, count: 4, isError: false }),
+    computeFilterTransitionState({ isPending: false, isLoading: false, isFetching: true, count: 4, isError: false }),
     'SHOW_DATA'
   )
 })
