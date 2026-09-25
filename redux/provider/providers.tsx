@@ -46,7 +46,12 @@ function AuthHydrator({ children }: { children: ReactNode }) {
     } catch {}
 
     const savedUser = window.localStorage.getItem(AUTH_USER_STORAGE_KEY)
-    const token = tokenFromUrl || window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? store.getState().auth.token
+    const token =
+      tokenFromUrl ||
+      window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ||
+      store.getState().auth?.token ||
+      (store.getState().auth as any)?.accessToken ||
+      null
 
     if (token) {
       if (savedUser) {
