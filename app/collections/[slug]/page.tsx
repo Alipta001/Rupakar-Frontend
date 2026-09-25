@@ -53,7 +53,10 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
     queryKey: ['collection-products', slug],
     queryFn: ({ signal }) => fetchProducts({ category: slug, limit: 24 }, { signal }),
     retry: false,
+    staleTime: 60 * 1000,
   })
+
+  const isInitialLoading = isPending || (isLoading && productItems.length === 0)
 
   return (
     <main className="bg-[#F8F4EE] text-[#1E1A17]">
@@ -80,7 +83,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
           <div className="mt-8 h-px w-full bg-[#D4C4B0]" />
           <div className="mt-5 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.2em] text-[#6B3E26]">
             <span>
-              {(isPending || isLoading) && productItems.length === 0
+              {isInitialLoading
                 ? 'Loading collection pieces…'
                 : isFetching
                 ? `Updating… (${productItems.length} pieces)`
@@ -101,20 +104,20 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
               <h2 className="mt-2 text-4xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>Pieces with a pulse</h2>
             </div>
             <span className="hidden font-sans text-[10px] uppercase tracking-[0.2em] text-[#5B4B3F] md:block">
-              {isLoading && productItems.length === 0
+              {isInitialLoading
                 ? 'Checking inventory…'
                 : `${productItems.length} available pieces`}
             </span>
           </div>
 
-          {(isPending || isLoading || isFetching) && productItems.length === 0 ? (
+          {isInitialLoading ? (
             <ProductGridSkeleton count={8} />
           ) : isError && productItems.length === 0 ? (
-            <ErrorState error={error} onRetry={() => refetch()} className="py-16" />
+            <ErrorState error={error} onRetry={() => refetch()} isRetrying={isFetching} className="py-16" />
           ) : productItems.length > 0 ? (
             <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
               {productItems.map((product: any) => (
-                <Link key={product.id ?? product._id} href={`/products/${product.slug ?? product.id}`} className="group">
+                <Link key={product.id ?? product._id ?? product.slug} href={`/products/${product.slug ?? product.id}`} className="group">
                   <div className="relative mb-4 aspect-[3/4] overflow-hidden bg-[#D4C4B0]">
                     <Image src={product.image ?? profile.image} alt={product.name} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
                   </div>

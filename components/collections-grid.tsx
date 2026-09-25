@@ -39,10 +39,16 @@ export default function CollectionsGrid() {
     error,
     refetch,
   } = useQuery<Product[]>({
-    queryKey: ['products', activeCategory],
-    queryFn: ({ signal }) => fetchProducts({ category: activeCategory === 'All' ? undefined : activeCategory }, { signal }),
+    queryKey: ['collection-products', 'browse', activeCategory],
+    queryFn: ({ signal }) =>
+      fetchProducts(
+        {
+          category: activeCategory === 'All' ? undefined : activeCategory,
+          limit: 40,
+        },
+        { signal }
+      ),
     staleTime: 60 * 1000,
-    placeholderData: (prev) => prev,
   })
 
   const addToCartMutation = useMutation({
@@ -67,16 +73,14 @@ export default function CollectionsGrid() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
   })
 
-  const filtered: Product[] = catalog.filter(
-    (p) => activeCategory === 'All' || p.craft.toLowerCase().includes(activeCategory.toLowerCase()) || p.category.toLowerCase() === activeCategory.toLowerCase()
-  )
-
-  const sorted: Product[] = [...filtered].sort((a: Product, b: Product) => {
+  const sorted: Product[] = [...catalog].sort((a: Product, b: Product) => {
     if (activeSort === 'Price: Low to High') return a.price - b.price
     if (activeSort === 'Price: High to Low') return b.price - a.price
     if (activeSort === 'Best Rated') return b.rating - a.rating
     return 0
   })
+
+  const isInitialOrCategoryLoading = isPending || (isLoading && catalog.length === 0)
 
   const toggleWishlist = (id: number | string) => {
     const strId = String(id)
@@ -153,16 +157,16 @@ export default function CollectionsGrid() {
         </div>
 
         {/* Count */}
-        {!isPending && !isLoading && (!isFetching || sorted.length > 0) && !isError && (
+        {!isInitialOrCategoryLoading && !isError && (
           <p className="text-[#5B4B3F] font-sans text-xs tracking-[0.1em] mb-8">
             {sorted.length} {sorted.length === 1 ? 'piece' : 'pieces'}
           </p>
         )}
 
         {/* Content State Separation */}
-        {(isPending || isLoading || isFetching) && sorted.length === 0 ? (
+        {isInitialOrCategoryLoading ? (
           <ProductGridSkeleton count={8} columns={4} />
-        ) : isError && sorted.length === 0 ? (
+        ) : isError && catalog.length === 0 ? (
           <ErrorState
             error={error}
             onRetry={() => refetch()}
@@ -178,21 +182,21 @@ export default function CollectionsGrid() {
           />
         ) : (
           <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <AnimatePresence>
+            <AnimatePresence mode="popLayout">
               {sorted.map((product) => (
                 <motion.div
-                  key={product.id}
+                  key={product.id || product._id || product.slug}
                   layout
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.5 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
                   className="group"
                 >
-                  <Link href={`/products/${product.id}`}>
+                  <Link href={`/products/${product.slug || product.id}`}>
                     <div className="relative overflow-hidden aspect-[3/4] mb-4 bg-[#EFE3D3]">
                       <Image
-                        src={product.image}
+                        src={product.image || '/images/product-vase.jpg'}
                         alt={product.name}
                         fill
                         className="object-cover transition-transform duration-[1000ms] group-hover:scale-110"
