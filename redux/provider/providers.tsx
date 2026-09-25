@@ -28,7 +28,12 @@ function AuthHydrator({ children }: { children: ReactNode }) {
 
     const handleAuthExpired = () => {
       dispatch(setAuth({ token: null, user: null, isAuthenticated: false }))
-      queryClient.clear()
+      queryClient.removeQueries({ queryKey: ['cart'] })
+      queryClient.removeQueries({ queryKey: ['orders'] })
+      queryClient.removeQueries({ queryKey: ['wishlist'] })
+      queryClient.removeQueries({ queryKey: ['user'] })
+      queryClient.removeQueries({ queryKey: ['addresses'] })
+      queryClient.removeQueries({ queryKey: ['profile'] })
     }
 
     window.addEventListener('rupakar:auth-expired', handleAuthExpired)
@@ -98,7 +103,12 @@ function AuthHydrator({ children }: { children: ReactNode }) {
     }
 
     if (previousAuthState.current && !isAuthenticated) {
-      queryClient.clear()
+      queryClient.removeQueries({ queryKey: ['cart'] })
+      queryClient.removeQueries({ queryKey: ['orders'] })
+      queryClient.removeQueries({ queryKey: ['wishlist'] })
+      queryClient.removeQueries({ queryKey: ['user'] })
+      queryClient.removeQueries({ queryKey: ['addresses'] })
+      queryClient.removeQueries({ queryKey: ['profile'] })
     } else if (!previousAuthState.current && isAuthenticated) {
       queryClient.invalidateQueries({ queryKey: ['cart'] })
       queryClient.invalidateQueries({ queryKey: ['orders'] })
