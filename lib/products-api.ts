@@ -204,9 +204,12 @@ const normalizeProduct = (item: any): Product => {
   }
 }
 
-export async function fetchProducts(params: Record<string, any> = {}) {
+export async function fetchProducts(
+  params: Record<string, any> = {},
+  options?: { signal?: AbortSignal }
+) {
   try {
-    const response = await AxiosInstance.get('/products', { params })
+    const response = await AxiosInstance.get('/products', { params, signal: options?.signal })
     const payload = response.data?.data ?? response.data ?? {}
     const list = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : []
     return list.map(normalizeProduct)
@@ -215,10 +218,13 @@ export async function fetchProducts(params: Record<string, any> = {}) {
   }
 }
 
-export async function fetchProductBySlug(slug: string) {
+export async function fetchProductBySlug(
+  slug: string,
+  options?: { signal?: AbortSignal }
+) {
   if (!slug?.trim()) return undefined
   try {
-    const response = await AxiosInstance.get(`/products/${encodeURIComponent(slug)}`)
+    const response = await AxiosInstance.get(`/products/${encodeURIComponent(slug)}`, { signal: options?.signal })
     const payload = response.data?.data ?? response.data ?? null
     return payload ? normalizeProduct(payload) : undefined
   } catch (error) {

@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Heart, Trash2, ShoppingBag } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { addCartItem, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { ProductGridSkeleton, ErrorState, EmptyState } from '@/components/skeletons'
 
 const normalizeImage = (value: unknown) => {
   if (typeof value === 'string' && value.trim()) return value
@@ -33,36 +34,33 @@ const normalizeWishlistItem = (entry: any) => {
 }
 
 export default function WishlistPage() {
-  const [wishlist, setWishlist] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const payload = await fetchWishlist().catch(() => ({ items: [] }))
-        const list = Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : []
-        setWishlist(list.map(normalizeWishlistItem))
-      } catch {
-        setWishlist([])
-      } finally {
-        setLoading(false)
-      }
-    }
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: fetchWishlist,
+    retry: false,
+  })
 
-    load()
-  }, [])
+  const rawList = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []
+  const wishlist = rawList.map(normalizeWishlistItem)
+
+  const removeMutation = useMutation({
+    mutationFn: (productId: string) => removeWishlistItem(productId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
+  })
+
+  const addToCartMutation = useMutation({
+    mutationFn: (item: any) => addCartItem({ productId: item.id, variantId: item.variantId, quantity: 1 }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cart'] }),
+  })
 
   const handleRemove = async (productId: string) => {
-    await removeWishlistItem(productId).catch(() => undefined)
-    setWishlist((current) => current.filter((item) => item.id !== productId))
+    await removeMutation.mutateAsync(productId)
   }
 
   const handleAddToCart = async (item: any) => {
-    await addCartItem({
-      productId: item.id,
-      variantId: item.variantId,
-      quantity: 1,
-    }).catch(() => undefined)
+    await addToCartMutation.mutateAsync(item)
   }
 
   return (
@@ -72,19 +70,22 @@ export default function WishlistPage() {
           My Wishlist
         </h1>
         <p className="text-[#5B4B3F] font-sans text-sm tracking-[0.05em]">
-          {loading ? 'Loading…' : `${wishlist.length} item${wishlist.length === 1 ? '' : 's'} saved`}
+          {(isLoading || isFetching) && wishlist.length === 0 ? 'Loading…' : `${wishlist.length} item${wishlist.length === 1 ? '' : 's'} saved`}
         </p>
       </motion.div>
 
-      {loading ? (
-        <div className="rounded-lg border border-[#C89B3C]/20 bg-white/70 p-6 text-sm text-[#5B4B3F]">Loading your wishlist…</div>
+      {(isLoading || isFetching) && wishlist.length === 0 ? (
+        <ProductGridSkeleton count={6} />
+      ) : isError && wishlist.length === 0 ? (
+        <ErrorState error={error} onRetry={() => refetch()} className="py-12" />
       ) : wishlist.length === 0 ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="text-center py-16 rounded-lg border border-dashed border-[#D4C4B0] bg-white/30">
-          <Heart size={48} className="mx-auto mb-4 text-[#C89B3C]/40" strokeWidth={1.5} />
-          <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: 'var(--font-cormorant)' }}>Your wishlist is empty</h3>
-          <p className="text-[#5B4B3F] font-sans text-sm tracking-[0.05em] mb-4">Start adding items to save them for later</p>
-          <Link href="/collections" className="inline-block px-6 py-2.5 bg-[#C89B3C] hover:bg-[#B7792B] text-white rounded-md font-sans text-xs tracking-[0.1em] uppercase transition-all font-medium">Explore Collections</Link>
-        </motion.div>
+        <EmptyState
+          title="Your wishlist is empty"
+          description="Start adding pieces to save them for later."
+          actionLabel="Explore Collections"
+          actionHref="/collections"
+          className="py-16"
+        />
       ) : (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.1 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {wishlist.map((item, index) => (

@@ -14,6 +14,7 @@ import { refreshCheckoutAfterPaymentCancellation } from '@/lib/checkout-state'
 import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
 import { useSelector } from 'react-redux'
 import { toast } from '@/hooks/use-toast'
+import { CheckoutSkeleton, AddressCardSkeleton, ErrorState } from '@/components/skeletons'
 
 type Step = 'address' | 'payment' | 'review'
 
@@ -76,13 +77,19 @@ export default function CheckoutPage() {
     if (authHydrated && !isAuthenticated) router.replace(loginPathForCurrentLocation())
   }, [authHydrated, isAuthenticated, router])
 
-  const { data: cartData, isLoading: cartLoading, isError: cartError } = useQuery({
+  const {
+    data: cartData,
+    isLoading: cartLoading,
+    isError: cartError,
+    error: cartQueryError,
+    refetch: refetchCart,
+  } = useQuery({
     queryKey: ['cart'],
     queryFn: fetchCart,
     enabled: authHydrated && isAuthenticated,
   })
 
-  const { data: addressesData = [], isLoading: addressesLoading, isError: addressesError } = useQuery({
+  const { data: addressesData = [], isLoading: addressesLoading, isFetching: addressesFetching, isError: addressesError } = useQuery({
     queryKey: ['addresses'],
     queryFn: fetchAddresses,
     enabled: authHydrated && isAuthenticated,
@@ -303,7 +310,7 @@ export default function CheckoutPage() {
     },
   })
 
-  const showNewAddressMode = newAddressMode || addresses.length === 0
+  const showNewAddressMode = newAddressMode || (!addressesLoading && !addressesFetching && addresses.length === 0)
   const canProceedFromAddress = selectedAddressId || (showNewAddressMode && newAddress.name && newAddress.line1 && newAddress.city && newAddress.pincode)
 
   // Order success screen
@@ -363,14 +370,14 @@ export default function CheckoutPage() {
       <Navbar />
       <section className="min-h-screen bg-[#F8F4EE] pt-28">
         <div className="max-w-6xl mx-auto px-6 py-10">
-          {cartLoading ? (
-            <div className="rounded-lg border border-[#D4C4B0] bg-white/60 p-10 text-center text-[#5B4B3F] font-sans text-sm">
-              Preparing your checkout…
-            </div>
-          ) : cartError ? (
-            <div className="rounded-lg border border-[#D4C4B0] bg-white/60 p-10 text-center text-[#7A1F1F] font-sans text-sm">
-              Unable to load your cart. Please refresh and try again.
-            </div>
+          {cartLoading && items.length === 0 ? (
+            <CheckoutSkeleton />
+          ) : cartError && items.length === 0 ? (
+            <ErrorState
+              error={cartQueryError}
+              onRetry={() => refetchCart()}
+              className="py-16"
+            />
           ) : items.length === 0 ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-20">
               <h1 style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '2.5rem', fontWeight: 400 }} className="text-[#1E1A17] mb-3">
@@ -417,11 +424,13 @@ export default function CheckoutPage() {
                           Shipping Address
                         </h2>
 
-                        {addressesLoading && (
-                          <p className="text-[#5B4B3F] font-sans text-xs mb-4">Loading saved addresses…</p>
+                        {(addressesLoading || addressesFetching) && addresses.length === 0 && (
+                          <div className="mb-6">
+                            <AddressCardSkeleton count={2} />
+                          </div>
                         )}
-                        {addressesError && (
-                          <p className="text-[#7A1F1F] font-sans text-xs mb-4">Unable to load saved addresses. You can enter a new address.</p>
+                        {addressesError && addresses.length === 0 && (
+                          <p className="text-[#7A1F1F] font-sans text-xs mb-4">Unable to load saved addresses. You can enter a new address below.</p>
                         )}
 
                         {addresses.length > 0 && (

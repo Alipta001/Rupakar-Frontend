@@ -8,37 +8,51 @@ export type CustomerApiError = Error & {
 }
 
 export const normalizeApiError = (cause: unknown): CustomerApiError => {
-  if (axios.isAxiosError(cause)) {
-    const status = cause.response?.status ?? 0
-    const payload = cause.response?.data as {
+  if (cause && typeof cause === 'object' && (axios.isAxiosError(cause) || 'response' in cause || 'code' in cause || 'message' in cause || (cause as any).isAxiosError)) {
+    const err = cause as any
+    const status = err.response?.status ?? 0
+    const payload = err.response?.data as {
       error?: { code?: string; message?: string }
       message?: string
       requestId?: string
     } | undefined
-    const rawMessage = payload?.error?.message || payload?.message || cause.message || 'Request failed'
-    const requestId = payload?.requestId || (cause.response?.headers?.['x-request-id'] as string | undefined)
+    const rawMessage = payload?.error?.message || payload?.message || err.message || 'Request failed'
+    const requestId = payload?.requestId || (err.response?.headers?.['x-request-id'] as string | undefined)
 
     const error = new Error(rawMessage) as CustomerApiError
     error.name = 'CustomerApiError'
     error.status = status
     error.code = payload?.error?.code
     error.requestId = requestId
-    error.isNetworkError = !cause.response
+    error.isNetworkError = !err.response && (err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED' || err.message?.includes?.('Network Error') || err.message?.includes?.('Failed to fetch') || err.isNetworkError === true)
     return error
   }
 
+
   if (cause instanceof Error) {
-    return Object.assign(cause, { status: 0, isNetworkError: false }) as CustomerApiError
+    const isNet = cause.message?.includes?.('Network Error') || cause.message?.includes?.('Failed to fetch') || (cause as any).code === 'ERR_NETWORK' || (cause as any).code === 'ECONNABORTED'
+    return Object.assign(cause, { status: 0, isNetworkError: Boolean(isNet) }) as CustomerApiError
   }
 
-  return Object.assign(new Error('Request failed'), { status: 0, isNetworkError: true }) as CustomerApiError
+  return Object.assign(new Error('Request failed'), { status: 0, isNetworkError: false }) as CustomerApiError
 }
+
+export const isColdStartError = (cause: unknown): boolean => {
+  if (!cause) return false
+  const error = normalizeApiError(cause)
+  return Boolean(error.isNetworkError || [502, 503, 504].includes(error.status))
+}
+
 
 export const getCustomerErrorMessage = (
   cause: unknown,
   context: 'cart' | 'product' | 'order' | 'general' = 'general'
 ): string => {
   const error = normalizeApiError(cause)
+
+  if (isColdStartError(cause)) {
+    return "We're taking a little longer than usual to connect. The server may be waking up. Please try again."
+  }
 
   // Direct business error code mappings across the application
   if (error.code === 'ORDER_ALREADY_PACKED') {
@@ -126,3 +140,6 @@ export const getCustomerErrorMessage = (
   if (error.status === 429) return 'Too many requests. Please wait a moment and try again.'
   return `Something went wrong. Please try again.${supportSuffix}`
 }
+
+export const getApiErrorMessage = getCustomerErrorMessage
+

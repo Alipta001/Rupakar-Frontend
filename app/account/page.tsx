@@ -7,6 +7,7 @@ import { TrendingUp, Package, Heart, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import { useSelector } from 'react-redux'
 import { fetchAddresses, fetchCurrentUser, fetchOrders, fetchWishlist } from '@/lib/customer-api'
+import { AccountDashboardSkeleton, Skeleton } from '@/components/skeletons'
 
 interface StatCard {
   icon: React.ComponentType<any>
@@ -59,6 +60,10 @@ export default function AccountDashboard() {
     [addressCount, loading, orderCount, wishlistCount],
   )
 
+  if (loading && !user && orderCount === 0 && addressCount === 0) {
+    return <AccountDashboardSkeleton />
+  }
+
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -96,8 +101,11 @@ export default function AccountDashboard() {
           <h2 className="text-lg tracking-[-0.01em] font-semibold" style={{ fontFamily: 'var(--font-cormorant)' }}>Recent Orders</h2>
         </div>
         <div className="divide-y divide-[#D4C4B0]">
-          {loading ? (
-            <div className="px-6 py-6 text-sm text-[#5B4B3F]">Loading your recent orders…</div>
+          {ordersQuery.isLoading ? (
+            <div className="p-6 space-y-4">
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-6 w-1/2" />
+            </div>
           ) : orderCount === 0 ? (
             <div className="px-6 py-6 text-sm text-[#5B4B3F]">No orders yet. Start shopping to create your first order.</div>
           ) : (

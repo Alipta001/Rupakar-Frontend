@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { MapPin, Edit2, Trash2, Plus } from 'lucide-react'
 import { createAddress, deleteAddress, fetchAddresses, updateAddress } from '@/lib/customer-api'
+import { AddressCardSkeleton, ErrorState } from '@/components/skeletons'
 
 interface AddressFormState {
   fullName: string
@@ -37,7 +38,14 @@ export default function AddressesPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<AddressFormState>(emptyForm)
 
-  const { data: addresses = [], isLoading } = useQuery({
+  const {
+    data: addresses = [],
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['addresses'],
     queryFn: fetchAddresses,
     retry: false,
@@ -176,9 +184,11 @@ export default function AddressesPage() {
       )}
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.1 }} className="space-y-4">
-        {isLoading ? (
-          <div className="text-sm text-[#5B4B3F]">Loading addresses…</div>
-        ) : addresses.length === 0 ? (
+        {(isLoading || isFetching) && addresses.length === 0 ? (
+          <AddressCardSkeleton count={2} />
+        ) : isError && addresses.length === 0 ? (
+          <ErrorState error={error} onRetry={() => refetch()} className="py-8" />
+        ) : !isLoading && !isFetching && addresses.length === 0 ? (
           <div className="rounded-lg border border-dashed border-[#D4C4B0] bg-white/30 p-6 text-center text-[#5B4B3F]">No addresses saved yet.</div>
         ) : (
           addresses.map((address, index) => {

@@ -8,6 +8,7 @@ import { motion, useInView } from 'framer-motion'
 import { Heart, ShoppingBag, Star, Eye } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchProducts, type Product } from '@/lib/products-api'
+import { BestSellersSkeleton } from '@/components/skeletons'
 
 function ProductCard({ product, index }: { product: Product; index: number }) {
   const [wishlist, setWishlist] = useState(false)
@@ -126,9 +127,9 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
 export default function BestSellers() {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data: products = [], isLoading, isFetching } = useQuery<Product[]>({
     queryKey: ['products', 'best-sellers'],
-    queryFn: () => fetchProducts({ limit: 5 }),
+    queryFn: ({ signal }) => fetchProducts({ limit: 5 }, { signal }),
     staleTime: 60 * 1000,
   })
 
@@ -167,11 +168,15 @@ export default function BestSellers() {
           </Link>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-          {products.map((product, i) => (
-            <ProductCard key={product.id} product={product} index={i} />
-          ))}
-        </div>
+        {(isLoading || isFetching) && products.length === 0 ? (
+          <BestSellersSkeleton />
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+            {products.map((product, i) => (
+              <ProductCard key={product.id} product={product} index={i} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   )

@@ -13,6 +13,7 @@ import { addCartItem, addWishlistItem, createProductReview, fetchCart, fetchOrde
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 import { getCustomerErrorMessage } from '@/lib/api-errors'
 import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
+import { Skeleton, ProductDetailSkeleton } from '@/components/skeletons'
 import BestSellers from './best-sellers'
 
 const guarantees = [
@@ -489,7 +490,20 @@ function ProductDetailContent({ product }: { product: Product }) {
             </div>
           </div>
 
-          {reviewsLoading ? <p className="text-[#5B4B3F] font-sans text-sm">Loading reviews…</p> : reviewsData?.items?.length ? (
+          {reviewsLoading ? (
+            <div className="grid gap-5 md:grid-cols-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="border border-[#D4C4B0] bg-white/50 p-6 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-14 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : reviewsData?.items?.length ? (
             <div className="grid gap-5 md:grid-cols-2">
               {reviewsData.items.map((review: any) => (
                 <article key={review.id ?? review._id} className="border border-[#D4C4B0] bg-white/50 p-6">
@@ -526,7 +540,7 @@ function ProductDetailContent({ product }: { product: Product }) {
 
 export default function ProductDetail({ product }: { product: Product }) {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#F8F4EE] pt-24" />}>
+    <Suspense fallback={<ProductDetailSkeleton />}>
       <ProductDetailContent key={product.id ?? product._id ?? product.slug} product={product} />
     </Suspense>
   )

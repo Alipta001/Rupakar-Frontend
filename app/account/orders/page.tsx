@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 import { Truck, Package, CheckCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { fetchOrdersPage } from '@/lib/customer-api'
+import { OrdersListSkeleton, ErrorState, EmptyState } from '@/components/skeletons'
 
 const statusConfig = {
   pending: { icon: AlertCircle, color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
@@ -30,11 +31,12 @@ export default function OrdersPage() {
   const page = Math.max(Number(searchParams.get('page')) || 1, 1); const status = searchParams.get('status') || 'ALL'
   const setPage = (next: number, nextStatus = status) => { const params = new URLSearchParams(); if (next > 1) params.set('page', String(next)); if (nextStatus !== 'ALL') params.set('status', nextStatus); router.replace(`/account/orders${params.size ? `?${params}` : ''}`) }
   const authHydrated = useSelector((state: any) => state.auth.hydrated)
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['orders', page, status],
     queryFn: () => fetchOrdersPage(page, 12, status),
     enabled: authHydrated,
     retry: false,
+    placeholderData: (prev: any) => prev,
     refetchInterval: (query) => {
       const items = Array.isArray(query.state.data?.items) ? query.state.data.items : []
       const hasActiveOrder = items.some((order: any) => {
@@ -66,17 +68,22 @@ export default function OrdersPage() {
       </motion.div>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.1 }} className="space-y-4">
-        {isLoading ? (
-          <div className="rounded-lg border border-[#C89B3C]/20 bg-white/70 p-6 text-sm text-[#5B4B3F]">Loading your orders…</div>
-        ) : isError ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12 rounded-lg border border-dashed border-[#D4C4B0] bg-white/30">
-            <p className="text-[#7A1F1F] font-sans text-sm tracking-[0.05em]">Your session has expired. Please sign in again.</p>
-          </motion.div>
+        {(isLoading || isFetching) && normalizedOrders.length === 0 ? (
+          <OrdersListSkeleton count={4} />
+        ) : isError && normalizedOrders.length === 0 ? (
+          <ErrorState
+            error={error}
+            onRetry={() => refetch()}
+            className="py-12"
+          />
         ) : normalizedOrders.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="text-center py-12 rounded-lg border border-dashed border-[#D4C4B0] bg-white/30">
-            <Package size={48} className="mx-auto mb-4 text-[#C89B3C]/40" strokeWidth={1.5} />
-            <p className="text-[#5B4B3F] font-sans text-sm tracking-[0.05em]">No orders to display yet.</p>
-          </motion.div>
+          <EmptyState
+            title="No orders yet"
+            description="When you place orders, they will appear here with live tracking updates."
+            actionLabel="Start Shopping"
+            actionHref="/products"
+            className="py-12"
+          />
         ) : (
           normalizedOrders.map((order: any, index: number) => {
             const statusInfo = statusConfig[order.status as keyof typeof statusConfig] ?? statusConfig.pending

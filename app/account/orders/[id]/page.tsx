@@ -9,6 +9,7 @@ import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, Ma
 import { downloadOrderInvoicePdf, fetchOrder, fetchOrderInvoice, cancelOrder, createCancellationRequest, fetchOrderCancellationRequests } from '@/lib/customer-api'
 import { getCustomerErrorMessage } from '@/lib/api-errors'
 import { toast } from '@/hooks/use-toast'
+import { OrderDetailSkeleton, ErrorState } from '@/components/skeletons'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -43,7 +44,7 @@ export default function OrderDetailPage({ params }: Props) {
   const { id } = use(params)
   const queryClient = useQueryClient()
 
-  const { data: order, isLoading, error } = useQuery({
+  const { data: order, isLoading, error, refetch } = useQuery({
     queryKey: ['order', id],
     queryFn: () => fetchOrder(id),
     retry: false,
@@ -156,17 +157,21 @@ export default function OrderDetailPage({ params }: Props) {
     },
   })
 
-  if (isLoading) {
+  if (isLoading && !order) {
+    return <OrderDetailSkeleton />
+  }
+
+  if (error && !order) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 bg-[#D4C4B0]/30 rounded w-1/3" />
-        <div className="h-32 bg-[#D4C4B0]/30 rounded" />
-        <div className="h-48 bg-[#D4C4B0]/30 rounded" />
-      </div>
+      <ErrorState
+        error={error}
+        onRetry={() => refetch()}
+        className="py-12"
+      />
     )
   }
 
-  if (error || !order) {
+  if (!order) {
     return (
       <div className="text-center py-12">
         <AlertCircle size={40} className="mx-auto mb-4 text-[#7A1F1F]/50" strokeWidth={1.5} />

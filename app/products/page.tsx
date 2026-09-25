@@ -11,6 +11,7 @@ import Footer from '@/components/footer'
 import { fetchProducts, type Product } from '@/lib/products-api'
 import { addCartItem, addWishlistItem, fetchCart, fetchCategories, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
+import { ProductGridSkeleton, ErrorState, EmptyState } from '@/components/skeletons'
 
 const SORT_OPTIONS = [
   { value: '', label: 'Featured' },
@@ -52,10 +53,18 @@ export default function ProductsPage() {
   if (minPrice) queryParams.minPrice = minPrice
   if (maxPrice) queryParams.maxPrice = maxPrice
 
-  const { data: products = [], isLoading } = useQuery<Product[]>({
+  const {
+    data: products = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery<Product[]>({
     queryKey: ['products', queryParams],
-    queryFn: () => fetchProducts(queryParams),
+    queryFn: ({ signal }) => fetchProducts(queryParams, { signal }),
     staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
   })
 
   const addToCartMutation = useMutation({
@@ -129,7 +138,7 @@ export default function ProductsPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-[#D4C4B0] font-sans text-sm mt-4 max-w-md mx-auto"
           >
-            Discover {products.length}+ artisan masterpieces from across India
+            Discover {!isLoading && products.length > 0 ? `${products.length}+` : 'our'} artisan masterpieces from across India
           </motion.p>
         </div>
 
@@ -161,7 +170,11 @@ export default function ProductsPage() {
 
             <div className="flex items-center gap-3">
               <span className="text-[#5B4B3F] font-sans text-xs tracking-[0.05em]">
-                {isLoading ? 'Loading…' : `${products.length} products`}
+                {isLoading && products.length === 0
+                  ? 'Loading pieces…'
+                  : isFetching
+                  ? `Updating… (${products.length} products)`
+                  : `${products.length} products`}
               </span>
               <select
                 value={sort}
@@ -251,23 +264,22 @@ export default function ProductsPage() {
           </AnimatePresence>
 
           {/* Products grid */}
-          {isLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-              {[...Array(12)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="bg-[#D4C4B0]/30 aspect-square mb-3" />
-                  <div className="bg-[#D4C4B0]/30 h-4 mb-2 w-3/4" />
-                  <div className="bg-[#D4C4B0]/30 h-3 w-1/2" />
-                </div>
-              ))}
-            </div>
+          {(isLoading || isFetching) && products.length === 0 ? (
+            <ProductGridSkeleton count={8} />
+          ) : isError && products.length === 0 ? (
+            <ErrorState
+              error={error}
+              onRetry={() => refetch()}
+              className="py-16"
+            />
           ) : products.length === 0 ? (
-            <div className="text-center py-24">
-              <p className="text-[#5B4B3F] font-sans text-sm mb-4">No products found matching your filters.</p>
-              <button onClick={clearFilters} className="text-[#C89B3C] font-sans text-xs underline">
-                Clear all filters
-              </button>
-            </div>
+            <EmptyState
+              title="No products found"
+              description="No pieces matched your selected filters. Try broadening your criteria or reset filters."
+              actionLabel="Clear all filters"
+              onAction={clearFilters}
+              className="py-16"
+            />
           ) : (
             <motion.div
               layout

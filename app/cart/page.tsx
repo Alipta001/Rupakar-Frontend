@@ -12,6 +12,7 @@ import Footer from '@/components/footer'
 import { clearCart, fetchCart, removeCartItem, updateCartItem } from '@/lib/customer-api'
 import { getCustomerErrorMessage } from '@/lib/api-errors'
 import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
+import { CartSkeleton, ErrorState } from '@/components/skeletons'
 
 export default function CartPage() {
   const queryClient = useQueryClient()
@@ -25,7 +26,7 @@ export default function CartPage() {
     if (authHydrated && !isAuthenticated) router.replace(loginPathForCurrentLocation())
   }, [authHydrated, isAuthenticated, router])
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['cart'],
     queryFn: fetchCart,
     enabled: authHydrated && isAuthenticated,
@@ -168,12 +169,14 @@ export default function CartPage() {
               <button onClick={() => setErrorMessage(null)} className="text-red-500 hover:text-red-700 text-xs uppercase tracking-wider font-semibold">Dismiss</button>
             </div>
           )}
-          {isLoading ? (
-            <div className="rounded-lg border border-[#D4C4B0] bg-white/60 p-10 text-center text-[#5B4B3F] font-sans text-sm">Loading your cart…</div>
-          ) : isError ? (
-            <div className="rounded-lg border border-dashed border-[#D4C4B0] bg-white/30 p-10 text-center text-[#7A1F1F] font-sans text-sm">
-              We could not load your cart. Please refresh or sign in again.
-            </div>
+          {(isLoading || isFetching) && items.length === 0 ? (
+            <CartSkeleton />
+          ) : isError && items.length === 0 ? (
+            <ErrorState
+              error={error}
+              onRetry={() => refetch()}
+              className="py-16"
+            />
           ) : items.length === 0 ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center">
               <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#EFE3D3] flex items-center justify-center">

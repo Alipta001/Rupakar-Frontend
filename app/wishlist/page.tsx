@@ -12,6 +12,7 @@ import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { addCartItem, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
 import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
+import { ProductGridSkeleton, ErrorState } from '@/components/skeletons'
 
 const normalizeImage = (value: unknown) => {
   if (typeof value === 'string' && value.trim()) return value
@@ -47,7 +48,14 @@ export default function WishlistPage() {
     if (authHydrated && !isAuthenticated) router.replace(loginPathForCurrentLocation())
   }, [authHydrated, isAuthenticated, router])
 
-  const { data, isLoading, isError } = useQuery({
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['wishlist'],
     queryFn: fetchWishlist,
     enabled: authHydrated && isAuthenticated,
@@ -82,15 +90,17 @@ export default function WishlistPage() {
             <h1 className="text-[#1E1A17] mb-3" style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '2.5rem', fontWeight: 400 }}>
               Your Wishlist
             </h1>
-            <p className="text-[#5B4B3F] font-sans text-sm">{isLoading ? 'Loading wishlist…' : `${items.length} item${items.length === 1 ? '' : 's'} saved`}</p>
+            <p className="text-[#5B4B3F] font-sans text-sm">{(isLoading || isFetching) && items.length === 0 ? 'Loading wishlist…' : `${items.length} item${items.length === 1 ? '' : 's'} saved`}</p>
           </motion.div>
 
-          {isLoading ? (
-            <div className="rounded-lg border border-[#D4C4B0] bg-white/60 p-10 text-center text-[#5B4B3F] font-sans text-sm">Loading your saved pieces…</div>
-          ) : isError ? (
-            <div className="rounded-lg border border-dashed border-[#D4C4B0] bg-white/30 p-10 text-center text-[#7A1F1F] font-sans text-sm">
-              We could not load your wishlist. Please refresh or sign in again.
-            </div>
+          {(isLoading || isFetching) && items.length === 0 ? (
+            <ProductGridSkeleton count={6} />
+          ) : isError && items.length === 0 ? (
+            <ErrorState
+              error={error}
+              onRetry={() => refetch()}
+              className="py-16"
+            />
           ) : items.length === 0 ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center max-w-xl mx-auto">
               <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#EFE3D3] flex items-center justify-center">

@@ -103,9 +103,17 @@ export const refreshAccessToken = async (): Promise<string | null> => {
       notifyTokenRefreshed(newAccessToken);
     }
     return newAccessToken;
-  } catch {
-    setAccessToken(null);
-    triggerAuthExpired();
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const isColdStart = [502, 503, 504].includes(status) ||
+      error?.code === 'ECONNABORTED' ||
+      error?.code === 'ERR_NETWORK' ||
+      (typeof error?.message === 'string' && error.message.includes('Network Error'));
+
+    if (!isColdStart) {
+      setAccessToken(null);
+      triggerAuthExpired();
+    }
     return null;
   } finally {
     refreshPromise = null;
@@ -145,9 +153,13 @@ AxiosInstance.interceptors.request.use((config) => {
 AxiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error?.config;
 
-    if (!originalRequest || shouldSkipRefresh(originalRequest.url)) {
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
+    if (shouldSkipRefresh(originalRequest.url)) {
       return Promise.reject(error);
     }
 
@@ -173,10 +185,43 @@ AxiosInstance.interceptors.response.use(
         }
 
         return AxiosInstance(originalRequest);
-      } catch {
-        setAccessToken(null);
-        triggerAuthExpired();
+      } catch (err: any) {
+        const status = err?.response?.status;
+        const isColdStart = [502, 503, 504].includes(status) ||
+          err?.code === 'ECONNABORTED' ||
+          err?.code === 'ERR_NETWORK' ||
+          (typeof err?.message === 'string' && err.message.includes('Network Error'));
+
+        if (!isColdStart && status === 401) {
+          setAccessToken(null);
+          triggerAuthExpired();
+        }
+        return Promise.reject(err || error);
       }
+    }
+
+    // Bounded retry for transient failures on safe GET requests (Render Free cold start: 502/503/504/timeout/network)
+    const method = (originalRequest.method || 'get').toLowerCase();
+    const isSafeMethod = method === 'get' || method === 'head' || method === 'options';
+    const status = error.response?.status;
+    const isCanceled = Boolean(
+      (typeof (axios as any)?.isCancel === 'function' && (axios as any).isCancel(error)) ||
+      error?.name === 'CanceledError' ||
+      error?.name === 'AbortError' ||
+      error?.code === 'ERR_CANCELED'
+    );
+    const isTransient = !isCanceled && (
+      [502, 503, 504].includes(status) ||
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ERR_NETWORK' ||
+      (typeof error.message === 'string' && error.message.includes('Network Error'))
+    );
+
+    if (isSafeMethod && isTransient && !originalRequest._skipRetry && (originalRequest._transientRetryCount || 0) < 2) {
+      originalRequest._transientRetryCount = (originalRequest._transientRetryCount || 0) + 1;
+      const delay = originalRequest._transientRetryCount * 800;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return AxiosInstance(originalRequest);
     }
 
     return Promise.reject(error);

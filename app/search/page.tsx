@@ -11,6 +11,7 @@ import Footer from '@/components/footer'
 import { fetchProducts, type Product } from '@/lib/products-api'
 import { addCartItem, addWishlistItem, fetchCart, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
+import { ProductGridSkeleton, ErrorState, EmptyState } from '@/components/skeletons'
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState<T>(value)
@@ -33,9 +34,16 @@ export default function SearchPage() {
   )
   const debouncedQuery = useDebounce(query, 300)
 
-  const { data: results = [], isLoading, isFetching } = useQuery<Product[]>({
+  const {
+    data: results = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery<Product[]>({
     queryKey: ['search', debouncedQuery],
-    queryFn: () => fetchProducts({ q: debouncedQuery, limit: 24 }),
+    queryFn: ({ signal }) => fetchProducts({ q: debouncedQuery, limit: 24 }, { signal }),
     enabled: debouncedQuery.trim().length >= 2,
     staleTime: 30 * 1000,
     placeholderData: (prev) => prev,
@@ -161,17 +169,29 @@ export default function SearchPage() {
               </motion.div>
             )}
 
+            {/* Loading state */}
+            {showResults && (isLoading || isFetching) && results.length === 0 && (
+              <ProductGridSkeleton count={8} />
+            )}
+
+            {/* Error state */}
+            {showResults && isError && results.length === 0 && (
+              <ErrorState
+                error={error}
+                onRetry={() => refetch()}
+                className="py-16"
+              />
+            )}
+
             {/* Empty state */}
-            {showEmpty && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
-                <p className="text-[#5B4B3F] font-sans text-sm mb-2">
-                  No results found for &ldquo;<span className="text-[#1E1A17] font-semibold">{debouncedQuery}</span>&rdquo;
-                </p>
-                <p className="text-[#5B4B3F] font-sans text-xs mb-6">Try different keywords or browse our collections.</p>
-                <Link href="/products" className="text-[#C89B3C] font-sans text-xs underline">
-                  Browse All Products
-                </Link>
-              </motion.div>
+            {showEmpty && !isError && (
+              <EmptyState
+                title={`No results found for "${debouncedQuery}"`}
+                description="Try different keywords or browse our handcrafted collections."
+                actionLabel="Browse All Products"
+                actionHref="/products"
+                className="py-16"
+              />
             )}
 
             {/* Results grid */}

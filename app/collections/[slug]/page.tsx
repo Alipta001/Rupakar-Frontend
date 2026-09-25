@@ -9,6 +9,7 @@ import { fetchProducts } from '@/lib/products-api'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { ArrowRight, Sparkles } from 'lucide-react'
+import { ProductGridSkeleton, ErrorState } from '@/components/skeletons'
 
 const collectionProfiles: Record<string, { name: string; image: string; intro: string; detail: string }> = {
   terracotta: {
@@ -27,15 +28,31 @@ const collectionProfiles: Record<string, { name: string; image: string; intro: s
 
 export default function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
-  const category = useQuery({ queryKey: ['category', slug], queryFn: async () => (await AxiosInstance.get(`/categories/${encodeURIComponent(slug)}`)).data?.data, retry: false })
+  const category = useQuery({
+    queryKey: ['category', slug],
+    queryFn: async ({ signal }) => (await AxiosInstance.get(`/categories/${encodeURIComponent(slug)}`, { signal })).data?.data,
+    retry: false,
+  })
+
   const profile = collectionProfiles[slug.toLowerCase()] ?? {
     name: category.data?.name ?? slug.replaceAll('-', ' '),
     image: '/images/collection-terracotta.jpg',
     intro: 'A considered edit of Indian craft.',
     detail: 'Discover pieces shaped by material, memory, and the hands that made them.',
   }
-  const products = useQuery({ queryKey: ['collection-products', slug], queryFn: () => fetchProducts({ category: slug, limit: 24 }), retry: false })
-  const productItems = products.data ?? []
+
+  const {
+    data: productItems = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
+    queryKey: ['collection-products', slug],
+    queryFn: ({ signal }) => fetchProducts({ category: slug, limit: 24 }, { signal }),
+    retry: false,
+  })
 
   return (
     <main className="bg-[#F8F4EE] text-[#1E1A17]">
@@ -45,7 +62,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
         <div className="absolute inset-0 bg-gradient-to-r from-[#1E1511]/90 via-[#1E1511]/55 to-transparent" />
         <div className="relative mx-auto flex min-h-[560px] max-w-7xl items-end px-6 pb-20 pt-32 md:px-12">
           <div className="max-w-2xl text-[#F8F4EE]">
-            <p className="mb-5 flex items-center gap-3 font-sans text-[10px] uppercase tracking-[0.35em] text-[#D8B15A]"><Sparkles size={13} /> Collection 01</p>
+            <p className="mb-5 flex items-center gap-3 font-sans text-[10px] uppercase tracking-[0.35em] text-[#D8B15A]"><Sparkles size={13} /> Collection</p>
             <h1 className="mb-5 text-6xl font-light leading-[0.9] md:text-8xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{profile.name}</h1>
             <p className="max-w-md text-lg leading-relaxed text-[#F8F4EE]/85" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{profile.intro}</p>
           </div>
@@ -61,7 +78,15 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
           <p className="text-sm leading-7 text-[#5B4B3F]">{profile.detail}</p>
           <div className="mt-8 h-px w-full bg-[#D4C4B0]" />
           <div className="mt-5 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.2em] text-[#6B3E26]">
-            <span>{productItems.length ? `${productItems.length} pieces` : 'A new edit is arriving'}</span>
+            <span>
+              {isLoading && productItems.length === 0
+                ? 'Loading collection pieces…'
+                : isFetching
+                ? `Updating… (${productItems.length} pieces)`
+                : productItems.length
+                ? `${productItems.length} pieces`
+                : 'A new edit is arriving'}
+            </span>
             <Link href="/products" className="inline-flex items-center gap-2 text-[#C89B3C] hover:text-[#6B3E26]">Explore all <ArrowRight size={14} /></Link>
           </div>
         </div>
@@ -70,10 +95,41 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
       <section className="border-t border-[#D4C4B0]/70 bg-[#EFE3D3]/45 px-6 py-16 md:px-12 md:py-20">
         <div className="mx-auto max-w-7xl">
           <div className="mb-10 flex items-end justify-between gap-6">
-            <div><p className="font-sans text-[10px] uppercase tracking-[0.25em] text-[#C89B3C]">From the studio</p><h2 className="mt-2 text-4xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>Pieces with a pulse</h2></div>
-            <span className="hidden font-sans text-[10px] uppercase tracking-[0.2em] text-[#5B4B3F] md:block">{productItems.length} available pieces</span>
+            <div>
+              <p className="font-sans text-[10px] uppercase tracking-[0.25em] text-[#C89B3C]">From the studio</p>
+              <h2 className="mt-2 text-4xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>Pieces with a pulse</h2>
+            </div>
+            <span className="hidden font-sans text-[10px] uppercase tracking-[0.2em] text-[#5B4B3F] md:block">
+              {isLoading && productItems.length === 0
+                ? 'Checking inventory…'
+                : `${productItems.length} available pieces`}
+            </span>
           </div>
-          {products.isLoading ? <div className="h-64 animate-pulse bg-[#D4C4B0]/40" /> : productItems.length ? <div className="grid grid-cols-2 gap-5 md:grid-cols-4">{productItems.map((product: any) => <Link key={product.id ?? product._id} href={`/products/${product.slug ?? product.id}`} className="group"><div className="relative mb-4 aspect-[3/4] overflow-hidden bg-[#D4C4B0]"><Image src={product.image ?? profile.image} alt={product.name} fill className="object-cover transition-transform duration-700 group-hover:scale-105" /></div><p className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#C89B3C]">{product.craft ?? profile.name}</p><h3 className="mt-1 text-xl group-hover:text-[#6B3E26]" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{product.name}</h3></Link>)}</div> : <div className="border border-[#C89B3C]/35 bg-[#F8F4EE] px-6 py-14 text-center md:px-12"><p className="font-sans text-[10px] uppercase tracking-[0.25em] text-[#C89B3C]">The shelves are being prepared</p><h3 className="mt-4 text-4xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>New pieces are on their way.</h3><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#5B4B3F]">This collection is still taking shape. Browse the full marketplace while our artisans prepare the next release.</p><Link href="/products" className="mt-7 inline-flex items-center gap-3 bg-[#1E1A17] px-6 py-3 font-sans text-[10px] uppercase tracking-[0.2em] text-[#F8F4EE] transition-colors hover:bg-[#C89B3C] hover:text-[#1E1A17]">Browse all products <ArrowRight size={14} /></Link></div>}
+
+          {isLoading && productItems.length === 0 ? (
+            <ProductGridSkeleton count={8} />
+          ) : isError && productItems.length === 0 ? (
+            <ErrorState error={error} onRetry={() => refetch()} className="py-16" />
+          ) : productItems.length > 0 ? (
+            <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
+              {productItems.map((product: any) => (
+                <Link key={product.id ?? product._id} href={`/products/${product.slug ?? product.id}`} className="group">
+                  <div className="relative mb-4 aspect-[3/4] overflow-hidden bg-[#D4C4B0]">
+                    <Image src={product.image ?? profile.image} alt={product.name} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                  </div>
+                  <p className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#C89B3C]">{product.craft ?? profile.name}</p>
+                  <h3 className="mt-1 text-xl group-hover:text-[#6B3E26]" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{product.name}</h3>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="border border-[#C89B3C]/35 bg-[#F8F4EE] px-6 py-14 text-center md:px-12">
+              <p className="font-sans text-[10px] uppercase tracking-[0.25em] text-[#C89B3C]">The shelves are being prepared</p>
+              <h3 className="mt-4 text-4xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>New pieces are on their way.</h3>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#5B4B3F]">This collection is still taking shape. Browse the full marketplace while our artisans prepare the next release.</p>
+              <Link href="/products" className="mt-7 inline-flex items-center gap-3 bg-[#1E1A17] px-6 py-3 font-sans text-[10px] uppercase tracking-[0.2em] text-[#F8F4EE] transition-colors hover:bg-[#C89B3C] hover:text-[#1E1A17]">Browse all products <ArrowRight size={14} /></Link>
+            </div>
+          )}
         </div>
       </section>
       <Footer />

@@ -182,6 +182,43 @@
   animation: shimmer 4s linear infinite;
 }
 
+/* Skeleton shimmer animation */
+@keyframes skeleton-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(212, 196, 176, 0.3);
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.8s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer::after {
+    animation: none;
+    background: none;
+  }
+  .skeleton-shimmer {
+    opacity: 0.6;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
 @layer components {
   .auth-pin {
     @apply inline-flex h-14 w-14 items-center justify-center rounded-[1.75rem] border border-[#D4C4B0] bg-white/95 text-center text-2xl font-semibold tracking-[0.35em] text-[#1E1A17] transition duration-300 focus:border-[#C89B3C] focus:outline-none focus:ring-2 focus:ring-[#C89B3C]/20;
