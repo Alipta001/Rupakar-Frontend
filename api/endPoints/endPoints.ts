@@ -3,6 +3,7 @@ export const endPoints = {
     signin: "/auth/login",
     signup: "/auth/register",
     otp: "/auth/verify-otp",
+    resendOtp: "/auth/resend-otp",
     forgotPassword: "/auth/forgot-password",
     resetPassword: "/auth/reset-password",
     logout: "/auth/logout",

@@ -128,6 +128,19 @@ export const verifyRegisterOtp = createAsyncThunk<
   }
 });
 
+export const resendVerificationOtp = createAsyncThunk<
+  ApiEnvelope<Record<string, unknown>>,
+  { email: string },
+  { rejectValue: string }
+>("auth/resendOtp", async (payload, thunkAPI) => {
+  try {
+    const response = await AxiosInstance.post(endPoints.auth.resendOtp, payload);
+    return response.data;
+  } catch (error: any) {
+    return thunkAPI.rejectWithValue(error.response?.data?.error?.message || error.response?.data?.message || "Failed to resend verification code");
+  }
+});
+
 export const authLogin = createAsyncThunk<
   ApiEnvelope<LoginResponse>,
   { email: string; password: string },
