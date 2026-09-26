@@ -161,8 +161,8 @@ export default function CartPage() {
   return (
     <main>
       <Navbar />
-      <section className="min-h-screen bg-[#F8F4EE] pt-32">
-        <div className="max-w-5xl mx-auto px-6 py-20">
+      <section className="min-h-screen bg-[#F8F4EE] pt-24 sm:pt-32">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-20">
           {errorMessage && (
             <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-sans flex items-center justify-between">
               <span>{errorMessage}</span>
@@ -266,7 +266,7 @@ export default function CartPage() {
             </div>
           )}
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }} className="mt-20 pt-20 border-t border-[#D4C4B0]">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }} className="mt-12 sm:mt-20 pt-10 sm:pt-20 border-t border-[#D4C4B0]">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
                 { title: 'Free Shipping', desc: 'On orders over ₹1,500' },

@@ -84,9 +84,9 @@ export default function WishlistPage() {
   return (
     <main>
       <Navbar />
-      <section className="min-h-screen bg-[#F8F4EE] pt-32">
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="mb-10">
+      <section className="min-h-screen bg-[#F8F4EE] pt-24 sm:pt-32">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-20">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="mb-8 sm:mb-10">
             <h1 className="text-[#1E1A17] mb-3" style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '2.5rem', fontWeight: 400 }}>
               Your Wishlist
             </h1>
@@ -119,7 +119,7 @@ export default function WishlistPage() {
               </Link>
             </motion.div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {items.map((item, index) => (
                 <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 * index }} className="rounded-lg border border-[#C89B3C]/20 bg-white/70 backdrop-blur-sm shadow-sm overflow-hidden hover:shadow-md transition-all group">
                   <div className="relative aspect-square overflow-hidden bg-[#EFE3D3]">

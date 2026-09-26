@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
 import { Star, ChevronLeft, ChevronRight } from 'lucide-react'
+import { RatingStars } from '@/components/ui/rating-stars'
 
 const testimonials = [
   {
@@ -90,10 +91,8 @@ export default function Testimonials() {
             className="text-center"
           >
             {/* Stars */}
-            <div className="flex justify-center gap-1 mb-6">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={16} className="fill-[#C89B3C] text-[#C89B3C]" />
-              ))}
+            <div className="flex justify-center mb-6">
+              <RatingStars rating={t.rating || 5} size={15} showNumber={false} showCount={false} />
             </div>
 
             {/* Quote */}

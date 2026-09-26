@@ -368,8 +368,8 @@ export default function CheckoutPage() {
   return (
     <main>
       <Navbar />
-      <section className="min-h-screen bg-[#F8F4EE] pt-28">
-        <div className="max-w-6xl mx-auto px-6 py-10">
+      <section className="min-h-screen bg-[#F8F4EE] pt-24 sm:pt-28">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
           {cartLoading && items.length === 0 ? (
             <CheckoutSkeleton />
           ) : cartError && items.length === 0 ? (
@@ -419,7 +419,7 @@ export default function CheckoutPage() {
                 <AnimatePresence mode="wait">
                   {step === 'address' && (
                     <motion.div key="address" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
-                      <div className="bg-white border border-[#D4C4B0] p-6 md:p-8">
+                      <div className="bg-white border border-[#D4C4B0] p-4 sm:p-6 md:p-8">
                         <h2 style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1.6rem' }} className="text-[#1E1A17] mb-6">
                           Shipping Address
                         </h2>
@@ -537,7 +537,7 @@ export default function CheckoutPage() {
 
                   {step === 'payment' && (
                     <motion.div key="payment" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
-                      <div className="bg-white border border-[#D4C4B0] p-6 md:p-8">
+                      <div className="bg-white border border-[#D4C4B0] p-4 sm:p-6 md:p-8">
                         <h2 style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1.6rem' }} className="text-[#1E1A17] mb-6">
                           Payment Method
                         </h2>
@@ -587,7 +587,7 @@ export default function CheckoutPage() {
 
                   {step === 'review' && (
                     <motion.div key="review" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
-                      <div className="bg-white border border-[#D4C4B0] p-6 md:p-8">
+                      <div className="bg-white border border-[#D4C4B0] p-4 sm:p-6 md:p-8">
                         <h2 style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1.6rem' }} className="text-[#1E1A17] mb-6">
                           Review & Place Order
                         </h2>

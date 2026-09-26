@@ -10,6 +10,7 @@ import { addCartItem, addWishlistItem, fetchCart, fetchWishlist, removeWishlistI
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 import { fetchProducts, type Product } from '@/lib/products-api'
 import { ProductGridSkeleton, EmptyState, ErrorState } from '@/components/skeletons'
+import { RatingStars } from '@/components/ui/rating-stars'
 
 const categories = ['All', 'Terracotta', 'Folk Art', 'Decor', 'Jewelry']
 const sortOptions = ['Featured', 'Price: Low to High', 'Price: High to Low', 'Best Rated']
@@ -121,19 +122,19 @@ export default function CollectionsGrid() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Filters bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 sm:mb-10">
           {/* Category filters */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex overflow-x-auto no-scrollbar w-full sm:w-auto flex-nowrap sm:flex-wrap gap-2 pb-1.5 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-5 py-2 font-sans text-[10px] tracking-[0.2em] uppercase transition-all duration-300 ${
+                className={`whitespace-nowrap flex-shrink-0 px-4 sm:px-5 py-2 font-sans text-[10px] tracking-[0.2em] uppercase transition-all duration-300 ${
                   activeCategory === cat
                     ? 'bg-[#6B3E26] text-[#F8F4EE]'
-                    : 'border border-[#D4C4B0] text-[#5B4B3F] hover:border-[#C89B3C] hover:text-[#1E1A17]'
+                    : 'border border-[#D4C4B0] text-[#5B4B3F] hover:border-[#C89B3C] hover:text-[#1E1A17] bg-white/40'
                 }`}
               >
                 {cat}
@@ -142,12 +143,12 @@ export default function CollectionsGrid() {
           </div>
 
           {/* Sort */}
-          <div className="flex items-center gap-3">
-            <SlidersHorizontal size={14} className="text-[#5B4B3F]" />
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <SlidersHorizontal size={13} className="text-[#5B4B3F]" />
             <select
               value={activeSort}
               onChange={(e) => setActiveSort(e.target.value)}
-              className="bg-transparent border border-[#D4C4B0] text-[#5B4B3F] font-sans text-[10px] tracking-[0.1em] px-3 py-2 focus:outline-none focus:border-[#C89B3C]"
+              className="bg-white/80 border border-[#D4C4B0] text-[#5B4B3F] font-sans text-[10px] tracking-[0.1em] px-3 py-1.5 focus:outline-none focus:border-[#C89B3C]"
             >
               {sortOptions.map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
@@ -158,7 +159,7 @@ export default function CollectionsGrid() {
 
         {/* Count */}
         {!isInitialOrCategoryLoading && !isError && (
-          <p className="text-[#5B4B3F] font-sans text-xs tracking-[0.1em] mb-8">
+          <p className="text-[#5B4B3F] font-sans text-xs tracking-[0.1em] mb-6 sm:mb-8">
             {sorted.length} {sorted.length === 1 ? 'piece' : 'pieces'}
           </p>
         )}
@@ -181,7 +182,7 @@ export default function CollectionsGrid() {
             onAction={() => setActiveCategory('All')}
           />
         ) : (
-          <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
             <AnimatePresence mode="popLayout">
               {sorted.map((product) => (
                 <motion.div
@@ -194,7 +195,7 @@ export default function CollectionsGrid() {
                   className="group"
                 >
                   <Link href={`/products/${product.slug || product.id}`}>
-                    <div className="relative overflow-hidden aspect-[3/4] mb-4 bg-[#EFE3D3]">
+                    <div className="relative overflow-hidden aspect-[3/4] mb-3 sm:mb-4 bg-[#EFE3D3]">
                       <Image
                         src={product.image || '/images/product-vase.jpg'}
                         alt={product.name}
@@ -204,14 +205,14 @@ export default function CollectionsGrid() {
                       <div className="absolute inset-0 bg-[#1E1A17]/0 group-hover:bg-[#1E1A17]/25 transition-colors duration-500" />
 
                       {product.badge && (
-                        <div className="absolute top-3 left-3 px-2.5 py-1" style={{ backgroundColor: product.badgeColor }}>
+                        <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 px-2 sm:px-2.5 py-0.5 sm:py-1" style={{ backgroundColor: product.badgeColor }}>
                           <span className="text-[#F8F4EE] font-sans text-[7px] tracking-[0.15em] uppercase">{product.badge}</span>
                         </div>
                       )}
 
                       <button
                         onClick={(e) => { e.preventDefault(); toggleWishlist(product._id ?? product.id) }}
-                        className="absolute top-3 right-3 w-7 h-7 bg-[#F8F4EE]/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 w-7 h-7 bg-[#F8F4EE]/90 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300"
                         aria-label="Wishlist"
                       >
                         <Heart
@@ -237,18 +238,13 @@ export default function CollectionsGrid() {
 
                     <div className="text-[#C89B3C] font-sans text-[8px] tracking-[0.2em] uppercase mb-1">{product.craft}</div>
                     <h3
-                      className="text-[#1E1A17] leading-tight mb-2 group-hover:text-[#6B3E26] transition-colors"
+                      className="text-[#1E1A17] leading-tight mb-1.5 group-hover:text-[#6B3E26] transition-colors line-clamp-2"
                       style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1rem', fontWeight: 500 }}
                     >
                       {product.name}
                     </h3>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <div className="flex gap-0.5">
-                        {[...Array(5)].map((_, j) => (
-                          <Star key={j} size={9} className={j < Math.floor(product.rating) ? 'fill-[#C89B3C] text-[#C89B3C]' : 'text-[#D4C4B0]'} />
-                        ))}
-                      </div>
-                      <span className="text-[#5B4B3F] font-sans text-[8px]">({product.reviews})</span>
+                    <div className="mb-2">
+                      <RatingStars rating={product.rating} reviews={product.reviews} size={10} showNumber={false} showCount={true} />
                     </div>
                     <div className="flex items-center gap-2">
                       <span style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1.1rem', color: '#1E1A17' }}>

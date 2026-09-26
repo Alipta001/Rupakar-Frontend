@@ -64,7 +64,19 @@ export default function OrdersPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <h1 className="text-3xl md:text-4xl tracking-[-0.02em] mb-2" style={{ fontFamily: 'var(--font-cormorant)' }}>Order History</h1>
         <p className="text-[#5B4B3F] font-sans text-sm tracking-[0.05em]">Track and manage all your orders</p>
-        <div className="mt-4 flex gap-2 overflow-x-auto">{['ALL','PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED'].map((value) => <button key={value} onClick={() => setPage(1, value)} className={`px-3 py-2 text-xs border ${status === value ? 'bg-[#1E1A17] text-white' : ''}`}>{value === 'ALL' ? 'All' : value[0] + value.slice(1).toLowerCase()}</button>)}</div>
+        <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
+          {['ALL','PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED'].map((value) => (
+            <button
+              key={value}
+              onClick={() => setPage(1, value)}
+              className={`whitespace-nowrap flex-shrink-0 px-3.5 py-2 text-xs font-sans tracking-wider uppercase border border-[#D4C4B0] transition-colors ${
+                status === value ? 'bg-[#1E1A17] text-white border-[#1E1A17]' : 'bg-white/60 text-[#5B4B3F] hover:border-[#C89B3C]'
+              }`}
+            >
+              {value === 'ALL' ? 'All' : value[0] + value.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
       </motion.div>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.1 }} className="space-y-4">
@@ -91,7 +103,7 @@ export default function OrdersPage() {
 
             return (
               <motion.div key={order.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 + index * 0.05 }} className="rounded-lg border border-[#C89B3C]/20 bg-white/70 backdrop-blur-sm shadow-sm overflow-hidden hover:shadow-md transition-all">
-                <div className="px-6 py-6">
+                <div className="p-4 sm:p-6">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">

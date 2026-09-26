@@ -14,6 +14,7 @@ import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 import { getCustomerErrorMessage } from '@/lib/api-errors'
 import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
 import { Skeleton, ProductDetailSkeleton } from '@/components/skeletons'
+import { RatingStars, InteractiveRatingStars } from '@/components/ui/rating-stars'
 import BestSellers from './best-sellers'
 
 const guarantees = [
@@ -177,10 +178,10 @@ function ProductDetailContent({ product }: { product: Product }) {
   }, [searchParams])
 
   return (
-    <div className="min-h-screen bg-[#F8F4EE] pt-24">
-      <div className="max-w-7xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-[#F8F4EE] pt-20 sm:pt-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 mb-8">
+        <div className="flex flex-wrap items-center gap-2 mb-6 sm:mb-8">
           <Link href="/" className="text-[#5B4B3F] hover:text-[#C89B3C] font-sans text-xs tracking-[0.1em] uppercase transition-colors">
             Home
           </Link>
@@ -195,7 +196,7 @@ function ProductDetailContent({ product }: { product: Product }) {
           <span className="text-[#1E1A17] font-sans text-xs tracking-[0.1em] uppercase">{product.name}</span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 mb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 mb-12 lg:mb-24">
           {/* Gallery */}
           <div className="space-y-4">
             {/* Main image */}
@@ -232,12 +233,12 @@ function ProductDetailContent({ product }: { product: Product }) {
             </div>
 
             {/* Thumbnails */}
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar pb-1">
               {product.images.map((img, i) => (
                 <button
                   key={i}
                   onClick={() => setSelectedImage(i)}
-                  className={`relative flex-1 aspect-square overflow-hidden border-2 transition-all duration-300 ${
+                  className={`relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 sm:flex-1 aspect-square overflow-hidden border-2 transition-all duration-300 ${
                     i === selectedImage ? 'border-[#C89B3C]' : 'border-transparent'
                   }`}
                   aria-label={`View image ${i + 1}`}
@@ -267,13 +268,13 @@ function ProductDetailContent({ product }: { product: Product }) {
             </h1>
 
             {/* Rating */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex gap-0.5">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={12} className={i < Math.floor(product.rating) ? 'fill-[#C89B3C] text-[#C89B3C]' : 'text-[#D4C4B0]'} />
-                ))}
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+              <div className="inline-flex items-center gap-2 bg-[#F3ECE2] px-2.5 py-1 border border-[#DECDBB]">
+                <RatingStars rating={product.rating} reviews={product.reviews} size={13} showNumber showCount={false} />
               </div>
-              <span className="text-[#5B4B3F] font-sans text-xs">{product.rating} ({product.reviews} reviews)</span>
+              <a href="#reviews" className="text-[#5B4B3F] hover:text-[#C89B3C] font-sans text-xs underline underline-offset-4 transition-colors">
+                {product.reviews} {product.reviews === 1 ? 'review' : 'reviews'}
+              </a>
             </div>
 
             {/* Price */}
@@ -477,16 +478,26 @@ function ProductDetailContent({ product }: { product: Product }) {
         </div>
       </div>
 
-      <section id="reviews" className="max-w-7xl mx-auto px-6 pb-24">
-        <div className="border-t border-[#D4C4B0] pt-16">
+      <section id="reviews" className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+        <div className="border-t border-[#D4C4B0] pt-10 sm:pt-16">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
             <div>
               <p className="text-[#C89B3C] font-sans text-[10px] tracking-[0.3em] uppercase mb-3">Collected voices</p>
               <h2 className="text-[#1E1A17]" style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '2.5rem', fontWeight: 400 }}>Reviews</h2>
             </div>
             <div className="text-[#5B4B3F] font-sans text-sm">
-              <strong className="text-[#1E1A17] text-2xl">{reviewsData?.averageRating || 0}</strong> / 5 ({reviewsData?.total || 0} reviews)
-              <div className="mt-2 flex gap-2 text-xs">{[5, 4, 3, 2, 1].map((rating) => <span key={rating}>{rating}★ {reviewsData?.breakdown?.[rating] || 0}</span>)}</div>
+              <div className="flex items-center gap-3">
+                <strong className="text-[#1E1A17] text-2xl">{reviewsData?.averageRating || 0}</strong>
+                <RatingStars rating={Number(reviewsData?.averageRating || 0)} size={15} showNumber={false} showCount={false} />
+                <span className="text-[#5B4B3F]">({reviewsData?.total || 0} reviews)</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                {[5, 4, 3, 2, 1].map((rating) => (
+                  <span key={rating} className="bg-white/60 border border-[#D4C4B0] px-2 py-0.5 rounded-sm">
+                    {rating}★ {reviewsData?.breakdown?.[rating] || 0}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -506,9 +517,12 @@ function ProductDetailContent({ product }: { product: Product }) {
           ) : reviewsData?.items?.length ? (
             <div className="grid gap-5 md:grid-cols-2">
               {reviewsData.items.map((review: any) => (
-                <article key={review.id ?? review._id} className="border border-[#D4C4B0] bg-white/50 p-6">
-                  <div className="flex justify-between gap-4 mb-3"><strong className="font-sans text-sm">{review.reviewerName || 'Rupakar Customer'}</strong><span className="text-[#C89B3C]">{'★'.repeat(Number(review.rating || 0))}</span></div>
-                  <h3 className="font-sans text-sm font-semibold mb-2">{review.title}</h3>
+                <article key={review.id ?? review._id} className="border border-[#D4C4B0] bg-white/50 p-5 sm:p-6">
+                  <div className="flex justify-between items-center gap-4 mb-3">
+                    <strong className="font-sans text-sm text-[#1E1A17]">{review.reviewerName || 'Rupakar Customer'}</strong>
+                    <RatingStars rating={Number(review.rating || 0)} size={12} showNumber={false} showCount={false} />
+                  </div>
+                  <h3 className="font-sans text-sm font-semibold mb-2 text-[#1E1A17]">{review.title}</h3>
                   <p className="text-[#5B4B3F] font-sans text-sm leading-relaxed">{review.comment}</p>
                   <time className="block mt-4 text-[#5B4B3F]/70 font-sans text-xs">{review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}</time>
                 </article>
@@ -518,13 +532,16 @@ function ProductDetailContent({ product }: { product: Product }) {
 
           <div className="mt-10 border-t border-[#D4C4B0] pt-8">
             <h3 className="text-[#1E1A17] mb-4" style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1.8rem' }}>Share your experience</h3>
-            {!isAuthenticated ? <button onClick={handleReviewStart} className="border border-[#C89B3C] text-[#6B3E26] px-5 py-3 font-sans text-xs tracking-[0.15em] uppercase">Please sign in to write a review</button>
+            {!isAuthenticated ? <button onClick={handleReviewStart} className="border border-[#C89B3C] text-[#6B3E26] px-5 py-3 font-sans text-xs tracking-[0.15em] uppercase hover:bg-[#C89B3C]/10 transition-colors">Please sign in to write a review</button>
               : !eligibleOrder ? <p className="text-[#5B4B3F] font-sans text-sm">You can review products you&apos;ve purchased.</p>
                 : <form onSubmit={(event) => { event.preventDefault(); if (reviewComment.trim().length < 3 || reviewTitle.trim().length < 3) { setReviewError('Please add a title and review of at least 3 characters.'); return } reviewMutation.mutate() }} className="max-w-2xl space-y-4">
-                  <div className="flex gap-2">{[1, 2, 3, 4, 5].map((value) => <button type="button" key={value} onClick={() => setReviewRating(value)} className={value <= reviewRating ? 'text-[#C89B3C] text-xl' : 'text-[#D4C4B0] text-xl'} aria-label={`${value} stars`}>★</button>)}</div>
-                  <input value={reviewTitle} onChange={(event) => setReviewTitle(event.target.value)} placeholder="Review title" maxLength={120} className="w-full border border-[#D4C4B0] bg-white px-4 py-3 font-sans text-sm" />
-                  <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} placeholder="Tell us about your experience" maxLength={2000} rows={4} className="w-full border border-[#D4C4B0] bg-white px-4 py-3 font-sans text-sm" />
-                  <button disabled={reviewMutation.isPending} className="bg-[#1E1A17] text-[#F8F4EE] px-5 py-3 font-sans text-xs tracking-[0.15em] uppercase">{reviewMutation.isPending ? 'Submitting…' : 'Submit review'}</button>
+                  <div className="space-y-1.5">
+                    <label className="block text-[#5B4B3F] font-sans text-xs tracking-wider uppercase">Rating</label>
+                    <InteractiveRatingStars value={reviewRating} onChange={setReviewRating} size={22} />
+                  </div>
+                  <input value={reviewTitle} onChange={(event) => setReviewTitle(event.target.value)} placeholder="Review title" maxLength={120} className="w-full border border-[#D4C4B0] bg-white px-4 py-3 font-sans text-sm focus:outline-none focus:border-[#C89B3C]" />
+                  <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} placeholder="Tell us about your experience" maxLength={2000} rows={4} className="w-full border border-[#D4C4B0] bg-white px-4 py-3 font-sans text-sm focus:outline-none focus:border-[#C89B3C]" />
+                  <button disabled={reviewMutation.isPending} className="w-full sm:w-auto bg-[#1E1A17] text-[#F8F4EE] px-6 py-3.5 font-sans text-xs tracking-[0.15em] uppercase hover:bg-[#3A2A20] transition-colors">{reviewMutation.isPending ? 'Submitting…' : 'Submit review'}</button>
                 </form>}
             {reviewError && <p className="mt-4 text-[#7A1F1F] font-sans text-sm">{reviewError}</p>}
             {reviewSuccess && <p className="mt-4 text-[#2A5E3A] font-sans text-sm">{reviewSuccess}</p>}

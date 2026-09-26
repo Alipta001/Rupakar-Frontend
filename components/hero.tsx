@@ -377,7 +377,7 @@ export default function Hero() {
                 className="max-w-4xl text-[#F8F4EE]"
                 style={{
                   fontFamily: 'var(--font-cormorant), serif',
-                  fontSize: 'clamp(4.2rem, 9vw, 8.7rem)',
+                  fontSize: 'clamp(3rem, 11vw, 8.7rem)',
                   fontWeight: 300,
                   letterSpacing: '-0.04em',
                   lineHeight: 0.9,
@@ -471,7 +471,7 @@ export default function Hero() {
               {/* Stats */}
               <motion.div
                 variants={fadeIn}
-                className="mt-16 flex flex-wrap items-center gap-x-12 gap-y-8"
+                className="mt-12 sm:mt-16 flex flex-wrap items-center gap-x-6 sm:gap-x-12 gap-y-6 sm:gap-y-8"
               >
                 {[
                   {

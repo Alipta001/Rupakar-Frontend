@@ -12,6 +12,7 @@ import { fetchProducts, type Product } from '@/lib/products-api'
 import { addCartItem, addWishlistItem, fetchCart, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 import { ProductGridSkeleton, ErrorState, EmptyState } from '@/components/skeletons'
+import { RatingStars } from '@/components/ui/rating-stars'
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState<T>(value)
@@ -207,7 +208,7 @@ export default function SearchPage() {
                   <p className="text-[#5B4B3F] font-sans text-xs tracking-[0.05em] mb-6">
                     {results.length} result{results.length !== 1 ? 's' : ''} for &ldquo;<span className="text-[#1E1A17] font-medium">{debouncedQuery}</span>&rdquo;
                   </p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5">
                     {results.map((product: Product, index: number) => {
                       const isWishlisted = wishlistSet.has(String(product.id))
                       return (
@@ -260,11 +261,8 @@ export default function SearchPage() {
                             >
                               {product.name}
                             </h3>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              {[...Array(5)].map((_, i) => (
-                                <Star key={i} size={9} className={i < Math.floor(product.rating) ? 'fill-[#C89B3C] text-[#C89B3C]' : 'text-[#D4C4B0]'} />
-                              ))}
-                              <span className="text-[#5B4B3F] font-sans text-[9px]">({product.reviews})</span>
+                            <div className="mb-1">
+                              <RatingStars rating={product.rating} reviews={product.reviews} size={10} showNumber={false} showCount={true} />
                             </div>
                             <div className="flex items-baseline gap-2">
                               <span className="font-sans text-sm font-semibold text-[#1E1A17]">₹{product.price.toLocaleString()}</span>

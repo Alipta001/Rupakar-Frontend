@@ -146,6 +146,15 @@
   background: var(--terracotta);
 }
 
+/* Hide scrollbar for carousel and horizontal tags */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Grain texture overlay */
 .grain-overlay {
   position: relative;

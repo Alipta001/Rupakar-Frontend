@@ -277,8 +277,8 @@ export default function AccountLayout({
     <main className="min-h-screen bg-[#F8F4EE] text-[#1E1A17]">
       <Navbar />
 
-      <div className="pt-24">
-        <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="pt-20 sm:pt-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
           <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
             {/* Sidebar */}
             <aside className="hidden lg:flex flex-col">

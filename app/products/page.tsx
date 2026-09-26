@@ -12,6 +12,7 @@ import { fetchProducts, type Product } from '@/lib/products-api'
 import { addCartItem, addWishlistItem, fetchCart, fetchCategories, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 import { ProductGridSkeleton, ErrorState, EmptyState } from '@/components/skeletons'
+import { RatingStars } from '@/components/ui/rating-stars'
 
 const SORT_OPTIONS = [
   { value: '', label: 'Featured' },
@@ -284,7 +285,7 @@ export default function ProductsPage() {
           ) : (
             <motion.div
               layout
-              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5"
             >
               {products.map((product: Product, index: number) => {
                 const isWishlisted = wishlistSet.has(String(product.id))
@@ -349,22 +350,13 @@ export default function ProductsPage() {
                           {product.craft}
                         </p>
                         <h3
-                          className="text-[#1E1A17] leading-snug mb-2 group-hover:text-[#6B3E26] transition-colors line-clamp-2"
+                          className="text-[#1E1A17] leading-snug mb-1.5 group-hover:text-[#6B3E26] transition-colors line-clamp-2"
                           style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1rem' }}
                         >
                           {product.name}
                         </h3>
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="flex gap-0.5">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                size={9}
-                                className={i < Math.floor(product.rating) ? 'fill-[#C89B3C] text-[#C89B3C]' : 'text-[#D4C4B0]'}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-[#5B4B3F] font-sans text-[9px]">({product.reviews})</span>
+                        <div className="mb-1">
+                          <RatingStars rating={product.rating} reviews={product.reviews} size={10} showNumber={false} showCount={true} />
                         </div>
                         <div className="flex items-baseline gap-2">
                           <span className="text-[#1E1A17] font-sans text-sm font-semibold">

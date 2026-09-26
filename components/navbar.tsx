@@ -148,32 +148,34 @@ export default function Navbar() {
 
           {/* Right Nav - Icons & Auth & Mobile Toggle */}
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Search */}
-            {isAuthenticated && <motion.button
+            {/* Search - Clearly visible on mobile & desktop */}
+            <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => router.push('/search')}
-              className="p-2 text-[#F8F4EE]/80 hover:text-[#C89B3C] transition-colors duration-300 min-w-[40px] min-h-[40px] flex items-center justify-center"
+              className="p-2 text-[#F8F4EE]/90 hover:text-[#C89B3C] transition-colors duration-300 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-full hover:bg-white/5"
               aria-label="Search"
             >
-              <Search size={18} strokeWidth={1.5} />
-            </motion.button>}
+              <Search size={19} strokeWidth={1.75} />
+            </motion.button>
 
-            {/* Wishlist */}
-            {isAuthenticated && <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/wishlist')}
-              className="p-2 text-[#F8F4EE]/80 hover:text-[#C89B3C] transition-colors duration-300 relative min-w-[40px] min-h-[40px] flex items-center justify-center"
-              aria-label="Wishlist"
-            >
-              <Heart size={18} strokeWidth={1.5} />
-              {wishlistCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-[#7A1F1F] text-[#F8F4EE] text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {wishlistCount > 9 ? '9+' : wishlistCount}
-                </span>
-              )}
-            </motion.button>}
+            {/* Wishlist - Hidden on mobile, visible on desktop when authenticated */}
+            {isAuthenticated && (
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => router.push('/wishlist')}
+                className="hidden sm:flex p-2 text-[#F8F4EE]/80 hover:text-[#C89B3C] transition-colors duration-300 relative min-w-[40px] min-h-[40px] items-center justify-center rounded-full hover:bg-white/5"
+                aria-label="Wishlist"
+              >
+                <Heart size={18} strokeWidth={1.5} />
+                {wishlistCount > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-[#7A1F1F] text-[#F8F4EE] text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {wishlistCount > 9 ? '9+' : wishlistCount}
+                  </span>
+                )}
+              </motion.button>
+            )}
 
             {/* Cart */}
             <motion.button
@@ -267,6 +269,21 @@ export default function Navbar() {
               transition={{ duration: 0.3 }}
               className="lg:hidden border-t border-[#C89B3C]/20 bg-[#1E1A17]/98 backdrop-blur-xl mt-3 px-6 py-5 space-y-4 max-h-[calc(100vh-80px)] overflow-y-auto"
             >
+              {/* Quick Search Shortcut */}
+              <div className="pt-1 pb-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false)
+                    router.push('/search')
+                  }}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-md bg-white/5 border border-[#C89B3C]/25 text-[#F8F4EE]/70 hover:text-[#C89B3C] hover:border-[#C89B3C]/50 transition-colors"
+                >
+                  <Search size={15} className="text-[#C89B3C] shrink-0" />
+                  <span className="font-sans text-xs tracking-wider uppercase">Search artisan crafts…</span>
+                </button>
+              </div>
+
               {/* Collections with Sub-categories */}
               <div>
                 <button

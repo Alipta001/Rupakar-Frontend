@@ -64,19 +64,19 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
       <section className="relative isolate min-h-[560px] overflow-hidden bg-[#241914]">
         <Image src={profile.image} alt={profile.name} fill priority className="object-cover object-center opacity-70" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#1E1511]/90 via-[#1E1511]/55 to-transparent" />
-        <div className="relative mx-auto flex min-h-[560px] max-w-7xl items-end px-6 pb-20 pt-32 md:px-12">
+        <div className="relative mx-auto flex min-h-[560px] max-w-7xl items-end px-4 sm:px-6 pb-16 sm:pb-20 pt-28 sm:pt-32 md:px-12">
           <div className="max-w-2xl text-[#F8F4EE]">
             <p className="mb-5 flex items-center gap-3 font-sans text-[10px] uppercase tracking-[0.35em] text-[#D8B15A]"><Sparkles size={13} /> Collection</p>
-            <h1 className="mb-5 text-6xl font-light leading-[0.9] md:text-8xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{profile.name}</h1>
-            <p className="max-w-md text-lg leading-relaxed text-[#F8F4EE]/85" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{profile.intro}</p>
+            <h1 className="mb-5 text-5xl font-light leading-[0.9] sm:text-6xl md:text-8xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{profile.name}</h1>
+            <p className="max-w-md text-base sm:text-lg leading-relaxed text-[#F8F4EE]/85" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{profile.intro}</p>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-[1fr_2fr] md:px-12 md:py-24">
+      <section className="mx-auto grid max-w-7xl gap-8 sm:gap-10 px-4 sm:px-6 py-12 sm:py-16 md:grid-cols-[1fr_2fr] md:px-12 md:py-24">
         <div>
           <p className="font-sans text-[10px] uppercase tracking-[0.25em] text-[#C89B3C]">The edit</p>
-          <h2 className="mt-4 text-4xl leading-none md:text-5xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{profile.intro}</h2>
+          <h2 className="mt-4 text-3xl sm:text-4xl leading-none md:text-5xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{profile.intro}</h2>
         </div>
         <div className="max-w-xl md:ml-auto">
           <p className="text-sm leading-7 text-[#5B4B3F]">{profile.detail}</p>
@@ -96,12 +96,12 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
         </div>
       </section>
 
-      <section className="border-t border-[#D4C4B0]/70 bg-[#EFE3D3]/45 px-6 py-16 md:px-12 md:py-20">
+      <section className="border-t border-[#D4C4B0]/70 bg-[#EFE3D3]/45 px-4 sm:px-6 py-12 sm:py-16 md:px-12 md:py-20">
         <div className="mx-auto max-w-7xl">
           <div className="mb-10 flex items-end justify-between gap-6">
             <div>
               <p className="font-sans text-[10px] uppercase tracking-[0.25em] text-[#C89B3C]">From the studio</p>
-              <h2 className="mt-2 text-4xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>Pieces with a pulse</h2>
+              <h2 className="mt-2 text-3xl sm:text-4xl" style={{ fontFamily: 'var(--font-cormorant), serif' }}>Pieces with a pulse</h2>
             </div>
             <span className="hidden font-sans text-[10px] uppercase tracking-[0.2em] text-[#5B4B3F] md:block">
               {isInitialLoading
@@ -115,7 +115,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
           ) : isError && productItems.length === 0 ? (
             <ErrorState error={error} onRetry={() => refetch()} isRetrying={isFetching} className="py-16" />
           ) : productItems.length > 0 ? (
-            <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3.5 sm:gap-5 md:grid-cols-4">
               {productItems.map((product: any) => (
                 <Link key={product.id ?? product._id ?? product.slug} href={`/products/${product.slug ?? product.id}`} className="group">
                   <div className="relative mb-4 aspect-[3/4] overflow-hidden bg-[#D4C4B0]">
