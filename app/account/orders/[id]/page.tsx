@@ -54,10 +54,17 @@ export default function OrderDetailPage({ params }: Props) {
     },
     refetchIntervalInBackground: true,
   })
-  const { data: invoice } = useQuery({
+
+  const isInvoiceEligible = Boolean(
+    order &&
+      (['PAID', 'CAPTURED'].includes(order.paymentStatus) ||
+        ['CONFIRMED', 'PROCESSING', 'PACKED', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED'].includes(order.status))
+  )
+
+  const { data: invoice, isLoading: isInvoiceLoading } = useQuery({
     queryKey: ['order-invoice', id],
     queryFn: () => fetchOrderInvoice(id),
-    enabled: Boolean(order?.paymentStatus === 'PAID' || order?.status === 'CONFIRMED'),
+    enabled: isInvoiceEligible,
     retry: false,
   })
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
@@ -75,8 +82,9 @@ export default function OrderDetailPage({ params }: Props) {
         anchor.href = url
         anchor.target = '_blank'
         anchor.rel = 'noreferrer'
-        anchor.download = `${download.invoiceNumber || invoice.invoiceNumber || 'rupakar-invoice'}.pdf`
+        anchor.download = `${download.invoiceNumber || invoice?.invoiceNumber || 'rupakar-invoice'}.pdf`
         anchor.click()
+        queryClient.invalidateQueries({ queryKey: ['order-invoice', id] })
       } else throw new Error('The invoice PDF is not ready yet.')
     } catch (error: any) {
       const status = error?.response?.status
@@ -235,14 +243,22 @@ export default function OrderDetailPage({ params }: Props) {
             </motion.button>
           )}
 
-          {(order.paymentStatus === 'PAID' || order.status === 'CONFIRMED') && (
+          {isInvoiceEligible && (
             <button
               onClick={handleInvoiceDownload}
               disabled={isDownloadingInvoice}
               className="flex items-center gap-2 border border-[#C89B3C] bg-[#C89B3C] text-[#1E1A17] px-4 py-2.5 font-sans text-[10px] tracking-[0.1em] uppercase hover:bg-[#B7792B] hover:border-[#B7792B] transition-colors disabled:opacity-60"
             >
               {isDownloadingInvoice ? <FileText size={13} className="animate-pulse" /> : <Download size={13} />}
-              {isDownloadingInvoice ? 'Preparing…' : invoice?.generationStatus === 'FAILED' ? 'Retry Invoice' : invoice?.generationStatus !== 'AVAILABLE' ? 'Preparing Invoice…' : 'Download Invoice'}
+              {isDownloadingInvoice
+                ? 'Preparing…'
+                : (invoice?.generationStatus === 'AVAILABLE' || invoice?.storageKey)
+                ? 'Download Invoice'
+                : (invoice?.generationStatus === 'FAILED' && !invoice?.storageKey)
+                ? 'Retry Invoice'
+                : (isInvoiceLoading || ['GENERATING', 'UPLOADING', 'PENDING'].includes(invoice?.generationStatus))
+                ? 'Preparing Invoice…'
+                : 'Download Invoice'}
             </button>
           )}
 
