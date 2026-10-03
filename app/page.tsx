@@ -10,22 +10,26 @@ import Testimonials from '@/components/testimonials'
 import InstagramGallery from '@/components/instagram-gallery'
 import Newsletter from '@/components/newsletter'
 import Footer from '@/components/footer'
+import LandingMusicControl from '@/components/landing-music-control'
+import { LandingScrollRestore } from '@/components/landing-scroll-restore'
 
 export default function Home() {
   return (
     <main>
+      <LandingScrollRestore />
       <Navbar />
-      <Hero />
-      <FeaturedCollections />
-      <TerracottaShowcase />
-      <ArtisanStory />
-      <BestSellers />
-      <ShopByCategory />
-      <HeritageSection />
-      <Testimonials />
-      <InstagramGallery />
-      <Newsletter />
+      <div id="hero"><Hero /></div>
+      <div id="featured-collections"><FeaturedCollections /></div>
+      <div id="terracotta-showcase"><TerracottaShowcase /></div>
+      <div id="artisan-story"><ArtisanStory /></div>
+      <div id="best-sellers"><BestSellers /></div>
+      <div id="shop-by-category"><ShopByCategory /></div>
+      <div id="heritage-section"><HeritageSection /></div>
+      <div id="testimonials"><Testimonials /></div>
+      <div id="instagram-gallery"><InstagramGallery /></div>
+      <div id="newsletter"><Newsletter /></div>
       <Footer />
+      <LandingMusicControl />
     </main>
   )
 }

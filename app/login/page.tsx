@@ -17,10 +17,12 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState(() => {
     if (typeof window === 'undefined') return ''
-    return new URLSearchParams(window.location.search).get('reason') === 'bag'
-      ? 'Please sign in to add items to your bag.'
-      : ''
+    const reason = new URLSearchParams(window.location.search).get('reason')
+    if (reason === 'bag') return 'Please sign in to add items to your bag.'
+    if (reason === 'buynow') return 'Please sign in to complete your purchase.'
+    return ''
   })
+  const rawReturnTo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('returnTo') : null
   const dispatch = useDispatch<any>()
   const queryClient = useQueryClient()
   const { loading } = useSelector((state: any) => state.auth)
@@ -73,7 +75,11 @@ export default function LoginPage() {
       }
 
       const returnTo = typeof window !== 'undefined' ? getSafeReturnTo(new URLSearchParams(window.location.search).get('returnTo')) : '/account'
-      router.push(returnTo)
+      if (returnTo.includes('#')) {
+        window.location.assign(returnTo)
+      } else {
+        router.push(returnTo)
+      }
     } catch (error: any) {
       const msg = error?.message || (typeof error === 'string' ? error : 'Invalid email or password. Please try again.')
       setErrorMessage(msg)
@@ -225,7 +231,7 @@ export default function LoginPage() {
           <motion.a
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            href="/register"
+            href={rawReturnTo ? `/register?returnTo=${encodeURIComponent(rawReturnTo)}` : '/register'}
             className="inline-block px-6 py-3 border-2 border-[#C89B3C] hover:bg-[#C89B3C] text-[#C89B3C] hover:text-white rounded-lg font-sans text-sm font-medium tracking-[0.1em] uppercase transition-all"
           >
             Create an Account

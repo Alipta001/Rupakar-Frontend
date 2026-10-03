@@ -3,9 +3,9 @@
 import { useState, useEffect, Suspense } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, ShoppingBag, Star, Shield, Truck, RotateCcw, Award, Check } from 'lucide-react'
+import { Heart, ShoppingBag, Star, Shield, Truck, RotateCcw, Award, Check, ArrowRight } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Product } from '@/lib/products-api'
@@ -25,14 +25,25 @@ const guarantees = [
 ]
 
 function ProductDetailContent({ product }: { product: Product }) {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const { isAuthenticated, hydrated: authHydrated } = useSelector((state: any) => state.auth)
   const [selectedImage, setSelectedImage] = useState(0)
-  const [quantity, setQuantity] = useState(1)
-  const [selectedVariantId, setSelectedVariantId] = useState('')
+  const [quantity, setQuantity] = useState(() => {
+    const qParam = searchParams.get('quantity')
+    if (qParam) {
+      const parsed = parseInt(qParam, 10)
+      if (Number.isInteger(parsed) && parsed > 0) return parsed
+    }
+    return 1
+  })
+  const [selectedVariantId, setSelectedVariantId] = useState(() => {
+    return searchParams.get('variantId') || ''
+  })
   const [activeTab, setActiveTab] = useState<'story' | 'details' | 'care'>('story')
   const [cartError, setCartError] = useState('')
+  const [isBuyNowPending, setIsBuyNowPending] = useState(false)
   const [reviewError, setReviewError] = useState('')
   const [reviewSuccess, setReviewSuccess] = useState('')
   const [reviewRating, setReviewRating] = useState(5)
@@ -128,34 +139,90 @@ function ProductDetailContent({ product }: { product: Product }) {
     },
   })
 
-  const handleAddToBag = () => {
+  const handleAddToBag = (overrideVariantId?: string, overrideQuantity?: number) => {
+    const activeVariantId = overrideVariantId || variantId
+    const activeQuantity = overrideQuantity || quantity
+
     if (!isAuthenticated) {
-      window.location.href = `${loginPathForCurrentLocation()}&reason=bag`
+      const returnTo = `${window.location.pathname}?action=add-to-cart&variantId=${encodeURIComponent(activeVariantId)}&quantity=${activeQuantity}`
+      router.push(`/login?returnTo=${encodeURIComponent(returnTo)}&reason=bag`)
       return
     }
     if (productUnavailable || !productId) {
       setCartError('This product is currently unavailable.')
       return
     }
-    if (variants.length > 0 && !selectedVariant) {
+    const currentVariant = variants.find((v) => String(v._id ?? v.id) === activeVariantId)
+    if (variants.length > 0 && !currentVariant) {
       setCartError('This option is currently unavailable. Please choose another option.')
       return
     }
-    if (!variantId) {
+    if (!activeVariantId) {
       setCartError('This item is currently out of stock.')
       return
     }
-    if (!Number.isInteger(quantity) || quantity < 1) {
+    if (!Number.isInteger(activeQuantity) || activeQuantity < 1) {
       setCartError('Please choose a valid quantity.')
       return
     }
-    addToCartMutation.mutate({ productId, variantId, quantity })
+    addToCartMutation.mutate({ productId, variantId: activeVariantId, quantity: activeQuantity })
+  }
+
+  const handleBuyNow = async (overrideVariantId?: string, overrideQuantity?: number) => {
+    const activeVariantId = overrideVariantId || variantId
+    const activeQuantity = overrideQuantity || quantity
+
+    if (productUnavailable || !productId) {
+      setCartError('This product is currently unavailable.')
+      return
+    }
+    const currentVariant = variants.find((v) => String(v._id ?? v.id) === activeVariantId)
+    if (variants.length > 0 && !currentVariant) {
+      setCartError('This option is currently unavailable. Please choose another option.')
+      return
+    }
+    if (!activeVariantId) {
+      setCartError('This item is currently out of stock.')
+      return
+    }
+    if (!Number.isInteger(activeQuantity) || activeQuantity < 1) {
+      setCartError('Please choose a valid quantity.')
+      return
+    }
+
+    if (!isAuthenticated) {
+      const returnTo = `${window.location.pathname}?action=buy-now&variantId=${encodeURIComponent(activeVariantId)}&quantity=${activeQuantity}`
+      router.push(`/login?returnTo=${encodeURIComponent(returnTo)}&reason=buynow`)
+      return
+    }
+
+    setIsBuyNowPending(true)
+    setCartError('')
+
+    try {
+      if (!hasCartVariant(cartData, activeVariantId)) {
+        await addCartItem({ productId, variantId: activeVariantId, quantity: activeQuantity })
+      }
+      await queryClient.invalidateQueries({ queryKey: ['cart'] })
+      queryClient.removeQueries({ queryKey: ['checkout-preview'] })
+      router.push('/checkout')
+    } catch (error: any) {
+      const errMsg = getCustomerErrorMessage(error, 'cart')
+      if (errMsg.toLowerCase().includes('already in your cart') || (error as any)?.response?.status === 409) {
+        router.push('/checkout')
+      } else {
+        setCartError(errMsg)
+        setTimeout(() => setCartError(''), 3000)
+      }
+    } finally {
+      setIsBuyNowPending(false)
+    }
   }
 
   const handleWishlist = () => {
     if (!isAuthenticated) {
       setCartError('Please sign in to save items to your wishlist.')
-      window.setTimeout(() => { window.location.href = loginPathForCurrentLocation() }, 300)
+      window.setTimeout(() => { router.push(loginPathForCurrentLocation()) }, 300)
       return
     }
     wishlistMutation.mutate()
@@ -163,19 +230,47 @@ function ProductDetailContent({ product }: { product: Product }) {
 
   const handleReviewStart = () => {
     if (!isAuthenticated) {
-      window.location.href = loginPathForCurrentLocation()
+      router.push(loginPathForCurrentLocation())
       return
     }
     document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   useEffect(() => {
-    if (searchParams.get('action') === 'add-to-cart') {
-      const timer = window.setTimeout(handleAddToBag, 0)
+    const action = searchParams.get('action')
+    if (!action) return
+
+    const vParam = searchParams.get('variantId') || undefined
+    const qParam = searchParams.get('quantity')
+    const parsedQ = qParam ? parseInt(qParam, 10) : undefined
+
+    if (action === 'buy-now') {
+      if (!isAuthenticated) {
+        const returnTo = `${window.location.pathname}?action=buy-now&variantId=${encodeURIComponent(vParam || variantId)}&quantity=${parsedQ || quantity}`
+        router.push(`/login?returnTo=${encodeURIComponent(returnTo)}&reason=buynow`)
+        return
+      }
+      window.history.replaceState({}, '', window.location.pathname)
+      const timer = window.setTimeout(() => {
+        void handleBuyNow(vParam, parsedQ)
+      }, 50)
+      return () => window.clearTimeout(timer)
+    }
+
+    if (action === 'add-to-cart' || action === 'add-to-bag') {
+      if (!isAuthenticated) {
+        const returnTo = `${window.location.pathname}?action=add-to-cart&variantId=${encodeURIComponent(vParam || variantId)}&quantity=${parsedQ || quantity}`
+        router.push(`/login?returnTo=${encodeURIComponent(returnTo)}&reason=bag`)
+        return
+      }
+      window.history.replaceState({}, '', window.location.pathname)
+      const timer = window.setTimeout(() => {
+        handleAddToBag(vParam, parsedQ)
+      }, 50)
       return () => window.clearTimeout(timer)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
+  }, [searchParams, isAuthenticated])
 
   return (
     <div className="min-h-screen bg-[#F8F4EE] pt-20 sm:pt-24">
@@ -353,9 +448,9 @@ function ProductDetailContent({ product }: { product: Product }) {
             {/* Actions */}
             <div className="flex gap-3 mb-3">
               <motion.button
-                onClick={handleAddToBag}
-                disabled={addToCartMutation.isPending || hasCartVariant(cartData, variantId)}
-                whileHover={{ scale: addToCartMutation.isPending || hasCartVariant(cartData, variantId) ? 1 : 1.02 }}
+                onClick={() => handleAddToBag()}
+                disabled={addToCartMutation.isPending || isBuyNowPending || hasCartVariant(cartData, variantId)}
+                whileHover={{ scale: addToCartMutation.isPending || isBuyNowPending || hasCartVariant(cartData, variantId) ? 1 : 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className={`flex-1 flex items-center justify-center gap-2 py-4 font-sans text-xs tracking-[0.2em] uppercase transition-all duration-300 ${
                   hasCartVariant(cartData, variantId)
@@ -387,11 +482,30 @@ function ProductDetailContent({ product }: { product: Product }) {
                 />
               </motion.button>
             </div>
+
+            {/* Buy Now Button directly below Add to Bag */}
+            <motion.button
+              onClick={() => handleBuyNow()}
+              disabled={isBuyNowPending || addToCartMutation.isPending || Boolean(productUnavailable || !variantId)}
+              whileHover={{ scale: isBuyNowPending || addToCartMutation.isPending || Boolean(productUnavailable || !variantId) ? 1 : 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full flex items-center justify-center gap-2 py-3.5 mb-3 bg-gradient-to-r from-[#C89B3C] to-[#B7792B] hover:from-[#B7792B] hover:to-[#A66B25] text-[#1E1A17] font-semibold font-sans text-xs tracking-[0.2em] uppercase transition-all shadow-md shadow-[#C89B3C]/15 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isBuyNowPending ? (
+                <span>Proceeding to Checkout…</span>
+              ) : (
+                <>
+                  <span>Buy Now</span>
+                  <ArrowRight size={14} strokeWidth={2} />
+                </>
+              )}
+            </motion.button>
+
             {cartError && (
               <div className="text-[#7A1F1F] font-sans text-xs mb-5 tracking-[0.05em]">
                 <p>{cartError}</p>
                 {!isAuthenticated && (
-                  <Link href={`/login?redirect=/products/${encodeURIComponent(product.slug)}`} className="inline-block mt-2 underline">
+                  <Link href={loginPathForCurrentLocation()} className="inline-block mt-2 underline">
                     Sign in
                   </Link>
                 )}

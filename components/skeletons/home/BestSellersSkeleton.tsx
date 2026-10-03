@@ -19,9 +19,9 @@ export function BestSellersSkeleton() {
         </div>
       </div>
 
-      <div className="flex gap-4 sm:gap-6 overflow-hidden pb-4">
+      <div className="flex gap-4 sm:gap-6 overflow-hidden pb-6 pt-3 px-1.5">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="w-[170px] sm:w-[220px] md:w-[250px] flex-shrink-0">
+          <div key={i} className="w-[185px] sm:w-[225px] md:w-[255px] lg:w-[270px] flex-shrink-0">
             <ProductCardSkeleton />
           </div>
         ))}

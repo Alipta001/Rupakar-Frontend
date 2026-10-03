@@ -372,7 +372,12 @@ export default function RegisterPage() {
         >
           <p className="font-sans text-sm text-[#5B4B3F]">
             Already have an account?{' '}
-            <a href="/login" className="text-[#C89B3C] hover:text-[#B7792B] font-medium transition-colors">
+            <a
+              href={typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('returnTo')
+                ? `/login?returnTo=${encodeURIComponent(new URLSearchParams(window.location.search).get('returnTo')!)}`
+                : '/login'}
+              className="text-[#C89B3C] hover:text-[#B7792B] font-medium transition-colors"
+            >
               Sign in here
             </a>
           </p>

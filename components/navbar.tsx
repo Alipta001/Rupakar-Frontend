@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query'
 import { authLogout } from '@/redux/slice/authSlice/authSlice'
 import { AccountDropdown } from './account-dropdown'
 import { fetchCart, fetchWishlist } from '@/lib/customer-api'
+import { getCurrentReturnTo, loginPathForCurrentLocation } from '@/lib/auth-redirect'
 
 const navLinks = [
   {
@@ -228,7 +229,7 @@ export default function Navbar() {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => router.push('/login')}
+                      onClick={() => router.push(loginPathForCurrentLocation())}
                       className="px-4 py-2 text-[#C89B3C] hover:text-[#F8F4EE] border border-[#C89B3C] hover:bg-[#C89B3C] hover:border-[#C89B3C] rounded-md font-sans text-xs tracking-[0.1em] uppercase transition-all duration-300 min-h-[38px]"
                     >
                       Login
@@ -236,7 +237,7 @@ export default function Navbar() {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => router.push('/register')}
+                      onClick={() => router.push(`/register?returnTo=${encodeURIComponent(getCurrentReturnTo())}`)}
                       className="px-4 py-2 bg-[#C89B3C] hover:bg-[#B7792B] text-[#1E1A17] rounded-md font-sans text-xs tracking-[0.1em] uppercase transition-all duration-300 font-medium min-h-[38px]"
                     >
                       Register
@@ -428,7 +429,7 @@ export default function Navbar() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => {
-                          router.push('/login')
+                          router.push(loginPathForCurrentLocation())
                           setMobileOpen(false)
                         }}
                         className="flex-1 py-3 text-center text-[#C89B3C] border border-[#C89B3C] hover:bg-[#C89B3C] hover:text-[#1E1A17] rounded-md font-sans text-xs tracking-[0.1em] uppercase transition-all font-semibold"
@@ -437,7 +438,7 @@ export default function Navbar() {
                       </button>
                       <button
                         onClick={() => {
-                          router.push('/register')
+                          router.push(`/register?returnTo=${encodeURIComponent(getCurrentReturnTo())}`)
                           setMobileOpen(false)
                         }}
                         className="flex-1 py-3 text-center bg-[#C89B3C] hover:bg-[#B7792B] text-[#1E1A17] rounded-md font-sans text-xs tracking-[0.1em] uppercase transition-all font-semibold"
