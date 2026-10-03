@@ -38,11 +38,13 @@ export default function VerifyOtpPage() {
 
     if (typeof window !== 'undefined') {
       const savedEmail = localStorage.getItem(STORAGE_KEY)
-      if (savedEmail) {
-        setEmail(savedEmail)
-      } else {
-        setLocalError('No email session found. Please sign up or sign in.')
-      }
+      queueMicrotask(() => {
+        if (savedEmail) {
+          setEmail(savedEmail)
+        } else {
+          setLocalError('No email session found. Please sign up or sign in.')
+        }
+      })
     }
   }, [dispatch])
 
