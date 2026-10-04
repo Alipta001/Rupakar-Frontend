@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Pause, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Play, Pause, VolumeX } from 'lucide-react'
 
 export default function LandingMusicControl() {
   const [isPlaying, setIsPlaying] = useState(false)
-  const [isMobileExpanded, setIsMobileExpanded] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
@@ -120,82 +118,22 @@ export default function LandingMusicControl() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. PHONE SCREEN ONLY (Shows arrow by default, expands to Play/Pause on tap) */}
+      {/* 2. PHONE SCREEN ONLY (Direct Play / Pause button - no dropdown or arrows) */}
       {/* ========================================================================= */}
       <div className="flex sm:hidden items-center">
-        <AnimatePresence mode="wait">
-          {!isMobileExpanded ? (
-            // Collapsed on phone: Arrow pointing LEFT (‹ into screen to expand)
-            <motion.button
-              key="mobile-arrow-trigger"
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.85, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              type="button"
-              onClick={() => setIsMobileExpanded(true)}
-              aria-label="Open background music control"
-              title="Open background music control"
-              className="flex items-center justify-center w-11 h-11 rounded-full min-h-[44px] min-w-[44px] bg-[#1E1A17]/95 text-[#F8F4EE] border border-[#C89B3C]/50 shadow-lg shadow-black/30 backdrop-blur-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C89B3C] touch-manipulation"
-            >
-              <ChevronLeft className="w-5 h-5 text-[#C89B3C]" />
-            </motion.button>
+        <button
+          type="button"
+          onClick={togglePlayback}
+          aria-label={isPlaying ? 'Pause background music' : 'Play background music'}
+          title={isPlaying ? 'Pause background music' : 'Play background music'}
+          className="flex items-center justify-center w-11 h-11 rounded-full min-h-[44px] min-w-[44px] bg-[#2D1B12]/95 text-[#F8F4EE] border border-[#C89B3C]/50 shadow-lg shadow-black/30 backdrop-blur-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C89B3C] touch-manipulation cursor-pointer"
+        >
+          {isPlaying ? (
+            <Pause className="w-5 h-5 fill-[#C89B3C] text-[#C89B3C]" />
           ) : (
-            // Expanded on phone: Play/Pause button + Arrow pointing RIGHT (› to collapse back)
-            <motion.div
-              key="mobile-expanded-player"
-              initial={{ x: 25, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 25, opacity: 0 }}
-              transition={{ duration: 0.22 }}
-              className="flex items-center gap-1.5"
-            >
-              <button
-                type="button"
-                onClick={togglePlayback}
-                aria-label={isPlaying ? 'Pause background music' : 'Play background music'}
-                title={isPlaying ? 'Pause background music' : 'Play background music'}
-                className="group flex items-center gap-2 px-3 py-2 rounded-full min-h-[44px] bg-[#1E1A17]/95 text-[#F8F4EE] border border-[#C89B3C]/50 shadow-lg shadow-black/30 backdrop-blur-md active:scale-95 text-xs font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C89B3C] touch-manipulation whitespace-nowrap"
-              >
-                {isPlaying ? (
-                  <span className="flex items-end gap-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true">
-                    <span className="w-0.5 bg-[#C89B3C] rounded-full animate-[pulse_0.7s_ease-in-out_infinite] h-3.5" />
-                    <span className="w-0.5 bg-[#C89B3C] rounded-full animate-[pulse_1.1s_ease-in-out_infinite_0.15s] h-2" />
-                    <span className="w-0.5 bg-[#C89B3C] rounded-full animate-[pulse_0.85s_ease-in-out_infinite_0.3s] h-3" />
-                  </span>
-                ) : (
-                  <VolumeX className="w-3.5 h-3.5 text-[#F8F4EE]/70 shrink-0" aria-hidden="true" />
-                )}
-
-                <span className="text-[11px] font-medium tracking-wide text-[#F8F4EE] select-none">
-                  {isPlaying ? 'Pause Music' : 'Play Music'}
-                </span>
-
-                <span
-                  className="flex items-center justify-center w-6 h-6 rounded-full bg-[#C89B3C]/20 text-[#C89B3C] shrink-0"
-                  aria-hidden="true"
-                >
-                  {isPlaying ? (
-                    <Pause className="w-3 h-3 fill-current" />
-                  ) : (
-                    <Play className="w-3 h-3 fill-current translate-x-0.5" />
-                  )}
-                </span>
-              </button>
-
-              {/* Collapse button on phone: points RIGHT (›) back towards the edge */}
-              <button
-                type="button"
-                onClick={() => setIsMobileExpanded(false)}
-                aria-label="Collapse music control"
-                title="Collapse music control"
-                className="flex items-center justify-center w-9 h-9 rounded-full min-h-[36px] min-w-[36px] bg-[#1E1A17]/95 text-[#F8F4EE] border border-[#C89B3C]/40 shadow-lg shadow-black/25 backdrop-blur-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C89B3C] touch-manipulation"
-              >
-                <ChevronRight className="w-4 h-4 text-[#C89B3C]" />
-              </button>
-            </motion.div>
+            <Play className="w-5 h-5 fill-[#C89B3C] text-[#C89B3C] translate-x-0.5" />
           )}
-        </AnimatePresence>
+        </button>
       </div>
     </aside>
   )
