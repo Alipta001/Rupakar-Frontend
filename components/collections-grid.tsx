@@ -100,7 +100,7 @@ export default function CollectionsGrid() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F4EE] pt-20">
+    <div className="min-h-screen bg-[#F8F4EE] pt-[72px] sm:pt-20">
       {/* Hero banner */}
       <div className="relative h-72 overflow-hidden">
         <Image src="/images/collection-terracotta.jpg" alt="Collections" fill className="object-cover" />

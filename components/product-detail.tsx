@@ -200,20 +200,12 @@ function ProductDetailContent({ product }: { product: Product }) {
     setCartError('')
 
     try {
-      if (!hasCartVariant(cartData, activeVariantId)) {
-        await addCartItem({ productId, variantId: activeVariantId, quantity: activeQuantity })
-      }
-      await queryClient.invalidateQueries({ queryKey: ['cart'] })
       queryClient.removeQueries({ queryKey: ['checkout-preview'] })
       router.push('/checkout')
     } catch (error: any) {
       const errMsg = getCustomerErrorMessage(error, 'cart')
-      if (errMsg.toLowerCase().includes('already in your cart') || (error as any)?.response?.status === 409) {
-        router.push('/checkout')
-      } else {
-        setCartError(errMsg)
-        setTimeout(() => setCartError(''), 3000)
-      }
+      setCartError(errMsg)
+      setTimeout(() => setCartError(''), 3000)
     } finally {
       setIsBuyNowPending(false)
     }
