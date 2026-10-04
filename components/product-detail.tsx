@@ -200,8 +200,32 @@ function ProductDetailContent({ product }: { product: Product }) {
     setCartError('')
 
     try {
+      const primaryImage = product.images?.[0] || product.image || ''
+      const unitPrice = currentVariant?.price ?? product.price ?? 0
+      const buyNowPayload = {
+        productId,
+        variantId: activeVariantId,
+        quantity: activeQuantity,
+        name: product.name,
+        price: unitPrice,
+        image: primaryImage,
+      }
+      try {
+        sessionStorage.setItem('rupakar_buy_now', JSON.stringify(buyNowPayload))
+      } catch {
+        // ignore
+      }
       queryClient.removeQueries({ queryKey: ['checkout-preview'] })
-      router.push('/checkout')
+      const query = new URLSearchParams({
+        buyNow: '1',
+        productId,
+        variantId: activeVariantId,
+        quantity: String(activeQuantity),
+        name: product.name,
+        price: String(unitPrice),
+        image: primaryImage,
+      })
+      router.push(`/checkout?${query.toString()}`)
     } catch (error: any) {
       const errMsg = getCustomerErrorMessage(error, 'cart')
       setCartError(errMsg)

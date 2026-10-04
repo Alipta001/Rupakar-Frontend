@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -52,9 +52,10 @@ const loadRazorpayCheckout = async () => {
   return window.Razorpay
 }
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const queryClient = useQueryClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { hydrated: authHydrated, isAuthenticated } = useSelector((state: any) => state.auth)
   const [step, setStep] = useState<Step>('address')
   const [selectedAddressIdOverride, setSelectedAddressIdOverride] = useState<string | null>(null)
@@ -73,6 +74,52 @@ export default function CheckoutPage() {
     phone: '',
   })
 
+  // Check for direct Buy Now context
+  const isBuyNowParam = searchParams.get('buyNow') === '1' || searchParams.get('buyNow') === 'true'
+  const paramProductId = searchParams.get('productId')
+  const paramVariantId = searchParams.get('variantId')
+
+  let buyNowItem: {
+    productId: string
+    variantId: string
+    quantity: number
+    name: string
+    price: number
+    image?: string
+  } | null = null
+
+  if (isBuyNowParam && paramProductId && paramVariantId) {
+    buyNowItem = {
+      productId: paramProductId,
+      variantId: paramVariantId,
+      quantity: Math.max(1, Number(searchParams.get('quantity') || 1)),
+      name: searchParams.get('name') || 'Handcrafted Artisan Product',
+      price: Number(searchParams.get('price') || 0),
+      image: searchParams.get('image') || '',
+    }
+  } else if (isBuyNowParam && typeof window !== 'undefined') {
+    try {
+      const raw = sessionStorage.getItem('rupakar_buy_now')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed?.productId && parsed?.variantId) {
+          buyNowItem = {
+            productId: String(parsed.productId),
+            variantId: String(parsed.variantId),
+            quantity: Math.max(1, Number(parsed.quantity || 1)),
+            name: parsed.name || 'Handcrafted Artisan Product',
+            price: Number(parsed.price || 0),
+            image: parsed.image || '',
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const isDirectBuyNow = Boolean(buyNowItem)
+
   useEffect(() => {
     if (authHydrated && !isAuthenticated) router.replace(loginPathForCurrentLocation())
   }, [authHydrated, isAuthenticated, router])
@@ -86,7 +133,7 @@ export default function CheckoutPage() {
   } = useQuery({
     queryKey: ['cart'],
     queryFn: fetchCart,
-    enabled: authHydrated && isAuthenticated,
+    enabled: authHydrated && isAuthenticated && !isDirectBuyNow,
   })
 
   const { data: addressesData = [], isLoading: addressesLoading, isFetching: addressesFetching, isError: addressesError } = useQuery({
@@ -110,11 +157,13 @@ export default function CheckoutPage() {
 
   const addresses = Array.isArray(addressesData) ? addressesData : []
   const selectedAddressId = selectedAddressIdOverride ?? (addresses[0] ? String(addresses[0]._id ?? addresses[0].id) : null)
-  const items: any[] = Array.isArray(cartData?.items) ? cartData.items : []
+  const items: any[] = isDirectBuyNow && buyNowItem
+    ? [buyNowItem]
+    : (Array.isArray(cartData?.items) ? cartData.items : [])
 
   const previewQuery = useQuery({
     queryKey: ['checkout-preview', selectedAddressId, items.map((i) => `${i.productId}:${i.variantId}:${i.quantity}`)],
-    enabled: items.length > 0,
+    enabled: items.length > 0 && Boolean(authHydrated && isAuthenticated),
     queryFn: () =>
       previewCheckout({
         items: items.map((item: any) => ({
@@ -128,9 +177,10 @@ export default function CheckoutPage() {
   })
 
   const summary = previewQuery.data
-  const subtotal = Number(summary?.subtotal ?? 0)
+  const defaultSubtotal = isDirectBuyNow && buyNowItem ? buyNowItem.price * buyNowItem.quantity : 0
+  const subtotal = Number(summary?.subtotal ?? defaultSubtotal)
   const shipping = Number(summary?.shipping ?? 0)
-  const total = Number(summary?.total ?? 0)
+  const total = Number(summary?.total ?? (subtotal + shipping))
   const previewError = previewQuery.isError
   const previewLoading = previewQuery.isLoading || previewQuery.isFetching
   const previewErrorMessage = (previewQuery.error as any)?.response?.data?.error?.message ?? 'Unable to calculate the current total.'
@@ -211,6 +261,13 @@ export default function CheckoutPage() {
         }),
         paymentMethod,
         idempotencyKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        ...(isDirectBuyNow && buyNowItem ? {
+          items: [{
+            productId: buyNowItem.productId,
+            variantId: buyNowItem.variantId,
+            quantity: buyNowItem.quantity,
+          }],
+        } : {}),
       })
 
       if (paymentMethod !== 'razorpay') return order
@@ -290,6 +347,13 @@ export default function CheckoutPage() {
       return finalOrder
     },
     onSuccess: (data: any) => {
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.removeItem('rupakar_buy_now')
+        } catch {
+          // ignore
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['cart'] })
       queryClient.invalidateQueries({ queryKey: ['orders'] })
       toast({
@@ -347,7 +411,7 @@ export default function CheckoutPage() {
                     <ArrowRight size={13} />
                   </motion.div>
                 </Link>
-                <Link href="/products">
+                <Link href="/collections">
                   <motion.div
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
@@ -384,7 +448,7 @@ export default function CheckoutPage() {
                 Checkout
               </h1>
               <p className="text-[#5B4B3F] font-sans text-sm mb-8">Your cart is empty. Add some beautiful artisan pieces first.</p>
-              <Link href="/products">
+              <Link href="/collections">
                 <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="inline-flex items-center gap-3 bg-[#1E1A17] text-[#F8F4EE] px-8 py-4 font-sans text-xs tracking-[0.2em] uppercase">
                   Browse Collections
                   <ArrowRight size={13} />
@@ -594,20 +658,30 @@ export default function CheckoutPage() {
 
                         {/* Items */}
                         <div className="space-y-3 mb-6 border-b border-[#EFE3D3] pb-6">
-                          {items.map((item: any, i: number) => (
-                            <div key={item.variantId ?? i} className="flex items-center gap-4">
-                              <div className="w-14 h-14 bg-[#EFE3D3] flex-shrink-0 overflow-hidden">
-                                {item.image && (
-                                  <Image src={item.image} alt={item.name ?? ''} width={56} height={56} className="w-full h-full object-cover" unoptimized />
-                                )}
+                          {items.map((item: any, i: number) => {
+                            const displayName = item.name ?? item.productName ?? 'Artisan Craft'
+                            const displayImage = item.image ?? item.product?.image ?? ''
+                            const unitPrice = Number(item.price ?? item.unitPrice ?? 0)
+                            const qty = Number(item.quantity ?? 1)
+                            return (
+                              <div key={item.variantId ?? i} className="flex items-center gap-4">
+                                <div className="w-14 h-14 bg-[#EFE3D3] flex-shrink-0 overflow-hidden">
+                                  {displayImage ? (
+                                    <Image src={displayImage} alt={displayName} width={56} height={56} className="w-full h-full object-cover" unoptimized />
+                                  ) : (
+                                    <div className="w-full h-full bg-[#EFE3D3] flex items-center justify-center text-[#5B4B3F] text-xs">
+                                      Artisan
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-sans text-xs text-[#1E1A17] font-medium truncate">{displayName}</p>
+                                  <p className="font-sans text-[10px] text-[#5B4B3F]">Qty: {qty}</p>
+                                </div>
+                                <p className="font-sans text-sm text-[#1E1A17] font-semibold">₹{(unitPrice * qty).toLocaleString()}</p>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-sans text-xs text-[#1E1A17] font-medium truncate">{item.name ?? 'Artisan Craft'}</p>
-                                <p className="font-sans text-[10px] text-[#5B4B3F]">Qty: {item.quantity}</p>
-                              </div>
-                              <p className="font-sans text-sm text-[#1E1A17] font-semibold">₹{(Number(item.price ?? 0) * Number(item.quantity ?? 1)).toLocaleString()}</p>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
 
                         {/* Summary */}
@@ -673,18 +747,30 @@ export default function CheckoutPage() {
                     Order Summary
                   </h3>
                   <div className="space-y-3 mb-5 border-b border-[#EFE3D3] pb-5">
-                    {items.slice(0, 3).map((item: any, i: number) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-[#EFE3D3] overflow-hidden flex-shrink-0">
-                          {item.image && <Image src={item.image} alt={item.name ?? ''} width={48} height={48} className="w-full h-full object-cover" unoptimized />}
+                    {items.slice(0, 3).map((item: any, i: number) => {
+                      const displayName = item.name ?? item.productName ?? 'Handcrafted Piece'
+                      const displayImage = item.image ?? item.product?.image ?? ''
+                      const unitPrice = Number(item.price ?? item.unitPrice ?? 0)
+                      const qty = Number(item.quantity ?? 1)
+                      return (
+                        <div key={i} className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-[#EFE3D3] overflow-hidden flex-shrink-0">
+                            {displayImage ? (
+                              <Image src={displayImage} alt={displayName} width={48} height={48} className="w-full h-full object-cover" unoptimized />
+                            ) : (
+                              <div className="w-full h-full bg-[#EFE3D3] flex items-center justify-center text-[#5B4B3F] text-[10px]">
+                                Artisan
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-sans text-[11px] text-[#1E1A17] truncate">{displayName}</p>
+                            <p className="font-sans text-[10px] text-[#5B4B3F]">×{qty}</p>
+                          </div>
+                          <p className="font-sans text-xs text-[#1E1A17] font-semibold">₹{(unitPrice * qty).toLocaleString()}</p>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-sans text-[11px] text-[#1E1A17] truncate">{item.name}</p>
-                          <p className="font-sans text-[10px] text-[#5B4B3F]">×{item.quantity}</p>
-                        </div>
-                        <p className="font-sans text-xs text-[#1E1A17] font-semibold">₹{(Number(item.price) * Number(item.quantity)).toLocaleString()}</p>
-                      </div>
-                    ))}
+                      )
+                    })}
                     {items.length > 3 && (
                       <p className="text-[#5B4B3F] font-sans text-[10px] text-center">+{items.length - 3} more items</p>
                     )}
@@ -714,5 +800,13 @@ export default function CheckoutPage() {
       </section>
       <Footer />
     </main>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<CheckoutSkeleton />}>
+      <CheckoutContent />
+    </Suspense>
   )
 }

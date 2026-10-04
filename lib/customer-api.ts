@@ -240,6 +240,7 @@ export async function previewCheckout(payload: Record<string, any> = {}) {
 }
 
 export async function createOrder(payload: {
+  items?: Array<{ productId: string; variantId: string; quantity: number }>
   shippingAddressId?: string
   shippingAddress?: Record<string, any>
   paymentMethod: string
