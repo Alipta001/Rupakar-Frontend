@@ -168,9 +168,22 @@ export async function fetchProductReviews(productId: string, page = 1, limit = 1
   return unwrap<{ items: any[]; page: number; limit: number; total: number; averageRating: number; breakdown: Record<string, number>; hasNextPage: boolean }>(response.data)
 }
 
-export async function createProductReview(payload: { productId: string; orderId: string; rating: number; title: string; comment: string }) {
+export async function createProductReview(payload: { productId: string; orderId?: string; rating: number; title: string; comment: string }) {
   const response = await AxiosInstance.post(endPoints.reviews.create, payload)
   return unwrap<any>(response.data)
+}
+
+export async function checkProductReviewEligibility(productId: string, orderId?: string) {
+  const response = await AxiosInstance.get(`${endPoints.reviews.eligibility}/${encodeURIComponent(productId)}`, {
+    params: orderId ? { orderId } : {},
+  })
+  return unwrap<{
+    canReview: boolean
+    reason: string
+    eligibleOrderId: string | null
+    alreadyReviewed: boolean
+    existingReview?: any
+  }>(response.data)
 }
 
 export async function fetchOrder(orderId: string) {

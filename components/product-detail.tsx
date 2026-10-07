@@ -9,7 +9,7 @@ import { Heart, ShoppingBag, Star, Shield, Truck, RotateCcw, Award, Check, Arrow
 import { useSelector } from 'react-redux'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Product } from '@/lib/products-api'
-import { addCartItem, addWishlistItem, createProductReview, fetchCart, fetchOrders, fetchProductReviews, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { addCartItem, addWishlistItem, checkProductReviewEligibility, createProductReview, fetchCart, fetchOrders, fetchProductReviews, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 import { getCustomerErrorMessage } from '@/lib/api-errors'
 import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
@@ -74,20 +74,38 @@ function ProductDetailContent({ product }: { product: Product }) {
     enabled: Boolean(productId),
     retry: false,
   })
+  const { data: eligibilityData } = useQuery({
+    queryKey: ['review-eligibility', productId],
+    queryFn: () => checkProductReviewEligibility(productId),
+    enabled: authHydrated && isAuthenticated && Boolean(productId),
+    retry: false,
+  })
   const { data: ordersData } = useQuery({
     queryKey: ['orders'],
     queryFn: fetchOrders,
     enabled: authHydrated && isAuthenticated,
     retry: false,
   })
-  const orders = Array.isArray(ordersData) ? ordersData : []
-  const eligibleOrder = orders.find((order: any) => {
+  const orders = Array.isArray(ordersData)
+    ? ordersData
+    : Array.isArray(ordersData?.items)
+      ? ordersData.items
+      : []
+  const localEligibleOrder = orders.find((order: any) => {
     const status = String(order?.status ?? '').toUpperCase()
-    return ['DELIVERED', 'RETURNED', 'REFUNDED'].includes(status)
-      && ['PAID', 'CAPTURED'].includes(String(order?.paymentStatus ?? '').toUpperCase())
+    const paymentStatus = String(order?.paymentStatus ?? '').toUpperCase()
+    const isDelivered = ['DELIVERED', 'RETURNED', 'REFUNDED'].includes(status)
+    const notCancelled = !['CANCELLED', 'FAILED'].includes(status) && !['FAILED', 'CANCELLED'].includes(paymentStatus)
+    return isDelivered
+      && notCancelled
       && Array.isArray(order?.items)
       && order.items.some((item: any) => String(item?.productId ?? item?.product?._id ?? '') === productId)
   })
+
+  const canReview = Boolean(eligibilityData ? eligibilityData.canReview : localEligibleOrder)
+  const alreadyReviewed = Boolean(eligibilityData?.alreadyReviewed)
+  const effectiveOrderId = eligibilityData?.eligibleOrderId || String(localEligibleOrder?._id ?? localEligibleOrder?.id ?? '')
+
   const wishlist = (Array.isArray(wishlistData?.items) ? wishlistData.items : []).some((item: any) =>
     String(item?.productId ?? item?.product?._id ?? item?.product?.id ?? item?._id ?? '') === productId,
   )
@@ -124,9 +142,16 @@ function ProductDetailContent({ product }: { product: Product }) {
   })
 
   const reviewMutation = useMutation({
-    mutationFn: () => createProductReview({ productId, orderId: String(eligibleOrder?._id ?? eligibleOrder?.id ?? ''), rating: reviewRating, title: reviewTitle.trim(), comment: reviewComment.trim() }),
+    mutationFn: () => createProductReview({
+      productId,
+      orderId: effectiveOrderId || undefined,
+      rating: reviewRating,
+      title: reviewTitle.trim(),
+      comment: reviewComment.trim(),
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-reviews', productId] })
+      queryClient.invalidateQueries({ queryKey: ['review-eligibility', productId] })
       setReviewTitle('')
       setReviewComment('')
       setReviewSuccess('Your review has been submitted.')
@@ -663,7 +688,8 @@ function ProductDetailContent({ product }: { product: Product }) {
           <div className="mt-10 border-t border-[#D4C4B0] pt-8">
             <h3 className="text-[#1E1A17] mb-4" style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1.8rem' }}>Share your experience</h3>
             {!isAuthenticated ? <button onClick={handleReviewStart} className="border border-[#C89B3C] text-[#6B3E26] px-5 py-3 font-sans text-xs tracking-[0.15em] uppercase hover:bg-[#C89B3C]/10 transition-colors">Please sign in to write a review</button>
-              : !eligibleOrder ? <p className="text-[#5B4B3F] font-sans text-sm">You can review products you&apos;ve purchased.</p>
+              : alreadyReviewed ? <p className="text-[#5B4B3F] font-sans text-sm">You have already reviewed this product.</p>
+              : !canReview ? <p className="text-[#5B4B3F] font-sans text-sm">You can review products you&apos;ve purchased.</p>
                 : <form onSubmit={(event) => { event.preventDefault(); if (reviewComment.trim().length < 3 || reviewTitle.trim().length < 3) { setReviewError('Please add a title and review of at least 3 characters.'); return } reviewMutation.mutate() }} className="max-w-2xl space-y-4">
                   <div className="space-y-1.5">
                     <label className="block text-[#5B4B3F] font-sans text-xs tracking-wider uppercase">Rating</label>

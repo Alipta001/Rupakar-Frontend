@@ -780,13 +780,16 @@ function CheckoutContent() {
                       <span>Subtotal ({items.length} items)</span>
                       <span>{previewLoading ? '—' : `₹${subtotal.toLocaleString()}`}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Shipping</span>
-                      <span>{previewLoading ? '—' : shipping === 0 ? 'Free' : `₹${shipping}`}</span>
-                    </div>
-                    {!previewLoading && subtotal < 1500 && (
-                      <p className="text-[#6B3E26] text-[10px]">Add ₹{(1500 - subtotal).toLocaleString()} more for free shipping!</p>
+                    {Number(summary?.discount || 0) > 0 && (
+                      <div className="flex justify-between text-[#8B6534]">
+                        <span>Discount</span>
+                        <span>-₹{Number(summary.discount).toLocaleString()}</span>
+                      </div>
                     )}
+                    <div className="flex justify-between">
+                      <span>Delivery</span>
+                      <span>{previewLoading ? '—' : shipping === 0 ? 'FREE' : `₹${shipping.toLocaleString()}`}</span>
+                    </div>
                     <div className="flex justify-between pt-3 border-t border-[#EFE3D3] text-[#1E1A17] font-bold text-sm">
                       <span>Total</span>
                       <span>{previewLoading ? '—' : `₹${total.toLocaleString()}`}</span>

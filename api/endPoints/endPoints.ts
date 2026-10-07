@@ -50,5 +50,6 @@ export const endPoints = {
   reviews: {
     product: "/reviews/product",
     create: "/reviews",
+    eligibility: "/reviews/eligibility",
   },
 };

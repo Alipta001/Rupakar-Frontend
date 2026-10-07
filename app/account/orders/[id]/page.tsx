@@ -434,6 +434,14 @@ export default function OrderDetailPage({ params }: Props) {
                             Cancel item
                           </button>
                         )}
+                        {['DELIVERED', 'RETURNED'].includes(String(group.status || order.status).toUpperCase()) && item.productId && (
+                          <Link
+                            href={`/products/${item.productId}`}
+                            className="mt-1 text-[11px] font-sans text-[#C89B3C] underline hover:text-[#B7792B]"
+                          >
+                            Write a review
+                          </Link>
+                        )}
                       </div>
                     </div>
                   })}
