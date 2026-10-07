@@ -173,6 +173,11 @@ export async function createProductReview(payload: { productId: string; orderId?
   return unwrap<any>(response.data)
 }
 
+export async function updateProductReview(reviewId: string, payload: { rating?: number; title?: string; comment?: string }) {
+  const response = await AxiosInstance.put(`${endPoints.reviews.create}/${encodeURIComponent(reviewId)}`, payload)
+  return unwrap<any>(response.data)
+}
+
 export async function checkProductReviewEligibility(productId: string, orderId?: string) {
   const response = await AxiosInstance.get(`${endPoints.reviews.eligibility}/${encodeURIComponent(productId)}`, {
     params: orderId ? { orderId } : {},

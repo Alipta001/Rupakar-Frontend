@@ -9,7 +9,7 @@ import { Heart, ShoppingBag, Star, Shield, Truck, RotateCcw, Award, Check, Arrow
 import { useSelector } from 'react-redux'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Product } from '@/lib/products-api'
-import { addCartItem, addWishlistItem, checkProductReviewEligibility, createProductReview, fetchCart, fetchOrders, fetchProductReviews, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
+import { addCartItem, addWishlistItem, checkProductReviewEligibility, createProductReview, updateProductReview, fetchCart, fetchOrders, fetchProductReviews, fetchWishlist, removeWishlistItem } from '@/lib/customer-api'
 import { getProductVariantId, hasCartVariant } from '@/lib/cart-state'
 import { getCustomerErrorMessage } from '@/lib/api-errors'
 import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
@@ -49,6 +49,7 @@ function ProductDetailContent({ product }: { product: Product }) {
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewTitle, setReviewTitle] = useState('')
   const [reviewComment, setReviewComment] = useState('')
+  const [isEditingReview, setIsEditingReview] = useState(false)
 
   const productId = String(product._id ?? product.id ?? '')
   const variants = (product.variants ?? []).filter((variant) => variant.status !== 'INACTIVE')
@@ -160,6 +161,26 @@ function ProductDetailContent({ product }: { product: Product }) {
     onError: (error: unknown) => {
       const normalized = getCustomerErrorMessage(error, 'general')
       setReviewError(normalized.includes('Something went wrong') ? 'We couldn\'t submit your review right now. Please try again.' : normalized)
+      setReviewSuccess('')
+    },
+  })
+
+  const updateReviewMutation = useMutation({
+    mutationFn: (reviewId: string) => updateProductReview(reviewId, {
+      rating: reviewRating,
+      title: reviewTitle.trim(),
+      comment: reviewComment.trim(),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-reviews', productId] })
+      queryClient.invalidateQueries({ queryKey: ['review-eligibility', productId] })
+      setIsEditingReview(false)
+      setReviewSuccess('Your review has been updated.')
+      setReviewError('')
+    },
+    onError: (error: unknown) => {
+      const normalized = getCustomerErrorMessage(error, 'general')
+      setReviewError(normalized.includes('Something went wrong') ? 'We couldn\'t update your review right now. Please try again.' : normalized)
       setReviewSuccess('')
     },
   })
@@ -688,7 +709,89 @@ function ProductDetailContent({ product }: { product: Product }) {
           <div className="mt-10 border-t border-[#D4C4B0] pt-8">
             <h3 className="text-[#1E1A17] mb-4" style={{ fontFamily: 'var(--font-cormorant), serif', fontSize: '1.8rem' }}>Share your experience</h3>
             {!isAuthenticated ? <button onClick={handleReviewStart} className="border border-[#C89B3C] text-[#6B3E26] px-5 py-3 font-sans text-xs tracking-[0.15em] uppercase hover:bg-[#C89B3C]/10 transition-colors">Please sign in to write a review</button>
-              : alreadyReviewed ? <p className="text-[#5B4B3F] font-sans text-sm">You have already reviewed this product.</p>
+              : alreadyReviewed ? (
+                <div className="max-w-2xl space-y-4">
+                  <div className="border border-[#D4C4B0] bg-white/70 p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-[#C89B3C]">Your Review</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isEditingReview) {
+                            setIsEditingReview(false)
+                            setReviewError('')
+                          } else {
+                            setIsEditingReview(true)
+                            setReviewRating(Number(eligibilityData?.existingReview?.rating || 5))
+                            setReviewTitle(eligibilityData?.existingReview?.title || '')
+                            setReviewComment(eligibilityData?.existingReview?.comment || '')
+                            setReviewError('')
+                          }
+                        }}
+                        className="text-xs text-[#6B3E26] underline hover:text-[#1E1A17] font-sans"
+                      >
+                        {isEditingReview ? 'Cancel edit' : 'Edit review'}
+                      </button>
+                    </div>
+                    {!isEditingReview && (
+                      <div className="space-y-2">
+                        <RatingStars rating={Number(eligibilityData?.existingReview?.rating || 0)} size={14} showNumber={false} showCount={false} />
+                        <h4 className="font-sans text-sm font-semibold text-[#1E1A17]">{eligibilityData?.existingReview?.title}</h4>
+                        <p className="font-sans text-sm text-[#5B4B3F] leading-relaxed">{eligibilityData?.existingReview?.comment}</p>
+                      </div>
+                    )}
+                  </div>
+                  {isEditingReview && (
+                    <form
+                      onSubmit={(event) => {
+                        event.preventDefault()
+                        if (reviewComment.trim().length < 3 || reviewTitle.trim().length < 3) {
+                          setReviewError('Please add a title and review of at least 3 characters.')
+                          return
+                        }
+                        const rId = eligibilityData?.existingReview?.id || eligibilityData?.existingReview?._id
+                        if (rId) updateReviewMutation.mutate(rId)
+                      }}
+                      className="space-y-4"
+                    >
+                      <div className="space-y-1.5">
+                        <label className="block text-[#5B4B3F] font-sans text-xs tracking-wider uppercase">Rating</label>
+                        <InteractiveRatingStars value={reviewRating} onChange={setReviewRating} size={22} />
+                      </div>
+                      <input
+                        value={reviewTitle}
+                        onChange={(event) => setReviewTitle(event.target.value)}
+                        placeholder="Review title"
+                        maxLength={120}
+                        className="w-full border border-[#D4C4B0] bg-white px-4 py-3 font-sans text-sm focus:outline-none focus:border-[#C89B3C]"
+                      />
+                      <textarea
+                        value={reviewComment}
+                        onChange={(event) => setReviewComment(event.target.value)}
+                        placeholder="Tell us about your experience"
+                        maxLength={2000}
+                        rows={4}
+                        className="w-full border border-[#D4C4B0] bg-white px-4 py-3 font-sans text-sm focus:outline-none focus:border-[#C89B3C]"
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          disabled={updateReviewMutation.isPending}
+                          className="bg-[#1E1A17] text-[#F8F4EE] px-6 py-3.5 font-sans text-xs tracking-[0.15em] uppercase hover:bg-[#3A2A20] transition-colors"
+                        >
+                          {updateReviewMutation.isPending ? 'Updating…' : 'Update review'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingReview(false)}
+                          className="border border-[#D4C4B0] text-[#5B4B3F] px-5 py-3.5 font-sans text-xs tracking-[0.15em] uppercase hover:bg-white transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )
               : !canReview ? <p className="text-[#5B4B3F] font-sans text-sm">You can review products you&apos;ve purchased.</p>
                 : <form onSubmit={(event) => { event.preventDefault(); if (reviewComment.trim().length < 3 || reviewTitle.trim().length < 3) { setReviewError('Please add a title and review of at least 3 characters.'); return } reviewMutation.mutate() }} className="max-w-2xl space-y-4">
                   <div className="space-y-1.5">
