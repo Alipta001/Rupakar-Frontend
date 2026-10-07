@@ -202,7 +202,8 @@ export default function OrderDetailPage({ params }: Props) {
     name: vendorOrder.vendorId?.businessName ?? vendorOrder.vendorId?.legalName ?? 'Seller fulfillment',
     status: vendorOrder.status,
     items: Array.isArray(vendorOrder.items) ? vendorOrder.items : [],
-  })) : [{ id: 'order-items', name: 'Order items', status: order.status, items }]
+    shipment: vendorOrder.shipment || (Array.isArray(order.shipments) ? order.shipments.find((s: any) => String(s.vendorOrderId) === String(vendorOrder._id)) : null),
+  })) : [{ id: 'order-items', name: 'Order items', status: order.status, items, shipment: order.shipments?.[0] || null }]
   const shippingAddr = order.shippingAddressSnapshot ?? order.shippingAddress ?? order.address ?? null
   const total = Number(order.total ?? order.grandTotal ?? order.amount ?? 0)
   const orderNumber = order.orderNumber ?? order.number ?? id
@@ -350,6 +351,33 @@ export default function OrderDetailPage({ params }: Props) {
                   <p className="font-sans text-xs font-semibold text-[#1E1A17]">{group.name}</p>
                   <span className="font-sans text-[10px] tracking-[0.08em] uppercase text-[#6B3E26]">{displayStatus(group.status)}</span>
                 </header>
+                {group.shipment && (
+                  <div className="bg-[#FAF5EE] border-b border-[#EFE3D3] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Truck size={14} className="text-[#C89B3C]" />
+                      <span className="font-sans text-[11px] text-[#1E1A17] font-medium">
+                        {group.shipment.carrier || 'Express Courier'} · AWB: <strong className="font-semibold">{group.shipment.trackingNumber || 'Pending'}</strong>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {group.shipment.estimatedDeliveryAt && (
+                        <span className="font-sans text-[11px] text-[#5B4B3F]">
+                          Est. Delivery: {new Date(group.shipment.estimatedDeliveryAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
+                      {group.shipment.trackingUrl && (
+                        <a
+                          href={group.shipment.trackingUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-sans text-[11px] font-medium text-[#C89B3C] hover:underline"
+                        >
+                          Track Package →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="px-4">
                   {group.items.map((item: any, i: number) => {
                     const imageUrl = itemImageUrl(item)
