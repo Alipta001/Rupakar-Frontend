@@ -206,6 +206,16 @@ const normalizeProduct = (item: any): Product => {
   }
 }
 
+export interface ProductsPageResult {
+  products: Product[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+}
+
 export async function fetchProducts(
   params: Record<string, any> = {},
   options?: { signal?: AbortSignal }
@@ -215,6 +225,42 @@ export async function fetchProducts(
     const payload = response.data?.data ?? response.data ?? {}
     const list = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : []
     return list.map(normalizeProduct)
+  } catch (error) {
+    throw normalizeApiError(error)
+  }
+}
+
+export async function fetchProductsPage(
+  params: Record<string, any> = {},
+  options?: { signal?: AbortSignal }
+): Promise<ProductsPageResult> {
+  try {
+    const response = await AxiosInstance.get('/products', { params, signal: options?.signal })
+    const payload = response.data?.data ?? response.data ?? {}
+    const list = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : []
+    const products = list.map(normalizeProduct)
+    const total = typeof payload?.total === 'number' ? payload.total : (payload?.pagination?.total ?? products.length)
+    const page = typeof payload?.page === 'number' ? payload.page : (payload?.pagination?.page ?? Number(params.page || 1))
+    const limit = typeof payload?.limit === 'number' ? payload.limit : (payload?.pagination?.limit ?? Number(params.limit || 20))
+    const totalPages = typeof payload?.totalPages === 'number'
+      ? payload.totalPages
+      : (payload?.pagination?.totalPages ?? Math.max(Math.ceil(total / limit), 1))
+    const hasNextPage = typeof payload?.pagination?.hasNextPage === 'boolean'
+      ? payload.pagination.hasNextPage
+      : page < totalPages
+    const hasPreviousPage = typeof payload?.pagination?.hasPreviousPage === 'boolean'
+      ? payload.pagination.hasPreviousPage
+      : page > 1
+
+    return {
+      products,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNextPage,
+      hasPreviousPage,
+    }
   } catch (error) {
     throw normalizeApiError(error)
   }

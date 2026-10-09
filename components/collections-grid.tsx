@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { fetchProducts, type Product } from '@/lib/products-api'
+import { fetchProducts, fetchProductsPage, type Product, type ProductsPageResult } from '@/lib/products-api'
 import { ProductGridSkeleton, EmptyState, ErrorState } from '@/components/skeletons'
 import { ProductCard } from '@/components/product-card'
 import { CollectionCarouselSection } from '@/components/collection-carousel-section'
@@ -47,31 +47,38 @@ export default function CollectionsGrid() {
     staleTime: 60 * 1000,
   })
 
-  // 4. Complete Catalog with Category, Server-Side Filtering, Sorting, and Pagination
+  // 4. Complete Catalog with Category, Server-Side Filtering, Sorting, and Pagination (limit 20)
   const {
-    data: catalog = [],
+    data: catalogPage,
     isLoading,
     isPending,
     isFetching,
     isError,
     error,
     refetch,
-  } = useQuery<Product[]>({
+  } = useQuery<ProductsPageResult>({
     queryKey: ['collection-products', 'browse', activeCategory, activeSort, minPrice, maxPrice, onlyFeatured, page],
     queryFn: ({ signal }) =>
-      fetchProducts(
+      fetchProductsPage(
         {
           category: activeCategory === 'All' ? undefined : activeCategory,
           sort: activeSort,
           minPrice: minPrice ? Number(minPrice) : undefined,
           maxPrice: maxPrice ? Number(maxPrice) : undefined,
           featured: onlyFeatured ? true : undefined,
-          limit: 24,
+          page,
+          limit: 20,
         },
         { signal }
       ),
     staleTime: 60 * 1000,
   })
+
+  const catalog = catalogPage?.products ?? []
+  const total = catalogPage?.total ?? catalog.length
+  const totalPages = catalogPage?.totalPages ?? 1
+  const hasNextPage = catalogPage?.hasNextPage ?? false
+  const hasPreviousPage = catalogPage?.hasPreviousPage ?? false
 
   const isInitialCatalogLoading = isPending || (isLoading && catalog.length === 0)
 
@@ -243,7 +250,7 @@ export default function CollectionsGrid() {
           {/* Merchandising Toolbar */}
           <CollectionToolbar
             collectionName={activeCategory === 'All' ? 'All Collections' : activeCategory}
-            totalCount={catalog.length}
+            totalCount={total}
             isFetching={isFetching}
             activeSort={activeSort}
             onSortChange={handleSortChange}
@@ -297,27 +304,34 @@ export default function CollectionsGrid() {
               </motion.div>
 
               {/* Server-Side Pagination Controls */}
-              {(catalog.length >= 24 || page > 1) && (
-                <div className="mt-14 pt-8 border-t border-[#D4C4B0] flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#D4C4B0] bg-white font-sans text-xs uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#C89B3C]"
-                  >
-                    <ChevronLeft size={14} />
-                    <span>Previous</span>
-                  </button>
-                  <span className="font-sans text-xs text-[#5B4B3F]">Page {page}</span>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={catalog.length < 24}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#D4C4B0] bg-white font-sans text-xs uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#C89B3C]"
-                  >
-                    <span>Next</span>
-                    <ChevronRight size={14} />
-                  </button>
+              {totalPages > 1 && (
+                <div className="mt-14 pt-8 border-t border-[#D4C4B0] flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="font-sans text-xs text-[#5B4B3F]">
+                    Showing {Math.min((page - 1) * 20 + 1, total)}–{Math.min(page * 20, total)} of {total} pieces
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1 || !hasPreviousPage}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#D4C4B0] bg-white font-sans text-xs uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#C89B3C] transition-colors"
+                    >
+                      <ChevronLeft size={14} />
+                      <span>Previous</span>
+                    </button>
+                    <span className="font-sans text-xs text-[#5B4B3F] font-medium px-2">
+                      Page {page} of {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page >= totalPages || !hasNextPage}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#D4C4B0] bg-white font-sans text-xs uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#C89B3C] transition-colors"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
                 </div>
               )}
             </>

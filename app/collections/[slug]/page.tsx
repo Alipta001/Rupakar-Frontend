@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useQuery } from '@tanstack/react-query'
 import { AxiosInstance } from '@/api/axios/axios'
-import { fetchProducts, type Product } from '@/lib/products-api'
+import { fetchProducts, fetchProductsPage, type Product, type ProductsPageResult } from '@/lib/products-api'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { ArrowRight, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -181,32 +181,39 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
     staleTime: 60 * 1000,
   })
 
-  // 4. Complete Collection Catalog (Server-Side Filtered & Sorted)
+  // 4. Complete Collection Catalog (Server-Side Filtered & Sorted with limit 20)
   const {
-    data: catalogProducts = [],
+    data: catalogPage,
     isLoading: isCatalogLoading,
     isPending: isCatalogPending,
     isFetching: isCatalogFetching,
     isError: isCatalogError,
     error: catalogError,
     refetch: refetchCatalog,
-  } = useQuery<Product[]>({
+  } = useQuery<ProductsPageResult>({
     queryKey: ['collection-catalog', slug, activeSort, minPrice, maxPrice, onlyFeatured, page],
     queryFn: ({ signal }) =>
-      fetchProducts(
+      fetchProductsPage(
         {
           category: slug,
           sort: activeSort,
           minPrice: minPrice ? Number(minPrice) : undefined,
           maxPrice: maxPrice ? Number(maxPrice) : undefined,
           featured: onlyFeatured ? true : undefined,
-          limit: 24,
+          page,
+          limit: 20,
         },
         { signal }
       ),
     retry: false,
     staleTime: 60 * 1000,
   })
+
+  const catalogProducts = catalogPage?.products ?? []
+  const catalogTotal = catalogPage?.total ?? catalogProducts.length
+  const totalPages = catalogPage?.totalPages ?? 1
+  const hasNextPage = catalogPage?.hasNextPage ?? false
+  const hasPreviousPage = catalogPage?.hasPreviousPage ?? false
 
   const isInitialCatalogLoading = isCatalogPending || (isCatalogLoading && catalogProducts.length === 0)
 
@@ -400,7 +407,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
           {/* Merchandising Toolbar */}
           <CollectionToolbar
             collectionName={profile.name}
-            totalCount={catalogProducts.length}
+            totalCount={catalogTotal}
             isFetching={isCatalogFetching}
             activeSort={activeSort}
             onSortChange={handleSortChange}
@@ -432,27 +439,34 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
               </div>
 
               {/* Server-Side Pagination Controls */}
-              {(catalogProducts.length >= 24 || page > 1) && (
-                <div className="mt-14 pt-8 border-t border-[#D4C4B0] flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#D4C4B0] bg-white font-sans text-xs uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#C89B3C]"
-                  >
-                    <ChevronLeft size={14} />
-                    <span>Previous</span>
-                  </button>
-                  <span className="font-sans text-xs text-[#5B4B3F]">Page {page}</span>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={catalogProducts.length < 24}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#D4C4B0] bg-white font-sans text-xs uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#C89B3C]"
-                  >
-                    <span>Next</span>
-                    <ChevronRight size={14} />
-                  </button>
+              {totalPages > 1 && (
+                <div className="mt-14 pt-8 border-t border-[#D4C4B0] flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="font-sans text-xs text-[#5B4B3F]">
+                    Showing {Math.min((page - 1) * 20 + 1, catalogTotal)}–{Math.min(page * 20, catalogTotal)} of {catalogTotal} pieces
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1 || !hasPreviousPage}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#D4C4B0] bg-white font-sans text-xs uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#C89B3C] transition-colors"
+                    >
+                      <ChevronLeft size={14} />
+                      <span>Previous</span>
+                    </button>
+                    <span className="font-sans text-xs text-[#5B4B3F] font-medium px-2">
+                      Page {page} of {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page >= totalPages || !hasNextPage}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#D4C4B0] bg-white font-sans text-xs uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#C89B3C] transition-colors"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
                 </div>
               )}
             </>
