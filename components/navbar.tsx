@@ -26,7 +26,13 @@ const navLinks = [
 
 const emptySubscribe = () => () => {}
 
-export default function Navbar() {
+export default function Navbar({
+  position = 'fixed',
+  className = '',
+}: {
+  position?: 'fixed' | 'sticky'
+  className?: string
+} = {}) {
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -73,14 +79,13 @@ export default function Navbar() {
   return (
     <>
       <motion.header
-        initial={{ y: -100, opacity: 0 }}
+        initial={false}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        className={`${position === 'sticky' ? 'sticky' : 'fixed'} top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
           scrolled
             ? 'bg-[#1E1A17]/95 backdrop-blur-md shadow-lg shadow-black/20 py-3'
             : 'bg-[#1E1A17]/95 backdrop-blur-md shadow-lg shadow-black/20 py-4 sm:py-5'
-        }`}
+        } ${className}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
           {/* Logo */}

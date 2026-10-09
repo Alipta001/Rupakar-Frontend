@@ -155,10 +155,56 @@ export async function clearCart() {
   return unwrap<any>(response.data)
 }
 
-export async function fetchOrdersPage(page = 1, limit = 12, status?: string) {
-  const response = await AxiosInstance.get(endPoints.orders.list, { params: { page, limit, ...(status && status !== 'ALL' ? { status } : {}) } })
+export type OrderFilters = {
+  status?: string
+  search?: string
+  timeframe?: string
+  from?: string
+  to?: string
+}
+
+export type PaginatedOrdersResponse = {
+  items: any[]
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasNext: boolean
+  hasPrevious: boolean
+}
+
+export async function fetchOrdersPage(page = 1, limit = 12, status?: string, filters?: OrderFilters): Promise<PaginatedOrdersResponse> {
+  const params: Record<string, any> = { page, limit }
+  const effectiveStatus = filters?.status || status
+  if (effectiveStatus && effectiveStatus !== 'ALL') {
+    params.status = effectiveStatus
+  }
+  if (filters?.search && filters.search.trim()) {
+    params.search = filters.search.trim()
+  }
+  if (filters?.timeframe && filters.timeframe !== 'ALL') {
+    params.timeframe = filters.timeframe
+  }
+  if (filters?.from) {
+    params.from = filters.from
+  }
+  if (filters?.to) {
+    params.to = filters.to
+  }
+
+  const response = await AxiosInstance.get(endPoints.orders.list, { params })
   const payload = unwrap<any>(response.data)
-  return Array.isArray(payload) ? { items: payload, page, limit, total: payload.length, totalPages: 1, hasNext: false, hasPrevious: false } : payload
+  return Array.isArray(payload)
+    ? { items: payload, page, limit, total: payload.length, totalPages: Math.ceil(payload.length / limit) || 1, hasNext: false, hasPrevious: page > 1 }
+    : {
+        items: Array.isArray(payload?.items) ? payload.items : [],
+        page: Number(payload?.page) || page,
+        limit: Number(payload?.limit) || limit,
+        total: Number(payload?.total) || 0,
+        totalPages: Number(payload?.totalPages) || (payload?.total ? Math.ceil(payload.total / limit) : 0),
+        hasNext: Boolean(payload?.hasNext),
+        hasPrevious: Boolean(payload?.hasPrevious),
+      }
 }
 
 export async function fetchOrders() { return fetchOrdersPage() }

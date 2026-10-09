@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function CollectionsPage() {
   return (
     <main>
-      <Navbar />
+      <Navbar position="sticky" />
       <CollectionsGrid />
       <Footer />
     </main>

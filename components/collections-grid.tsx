@@ -100,25 +100,40 @@ export default function CollectionsGrid() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F4EE] pt-[72px] sm:pt-20">
-      {/* Hero banner */}
-      <div className="relative h-72 overflow-hidden">
-        <Image src="/images/collection-terracotta.jpg" alt="Collections" fill className="object-cover" />
-        <div className="absolute inset-0 bg-[#1E1A17]/70" />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-          <div className="ornament-divider mb-4">
-            <span className="text-[#C89B3C] font-sans text-[10px] tracking-[0.3em] uppercase">Browse</span>
+    <div className="min-h-screen bg-[#F8F4EE]">
+      {/* Hero banner - Starts cleanly below navbar */}
+      <div className="relative h-72 sm:h-80 md:h-96 overflow-hidden bg-[#1E1511]">
+        <Image
+          src="/images/collection-terracotta.jpg"
+          alt="All Collections"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover opacity-65 scale-[1.02]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#140F0D]/95 via-[#1E1A17]/70 to-[#140F0D]/50" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 sm:px-6">
+          <nav aria-label="Breadcrumb" className="mb-3 flex items-center gap-2 font-sans text-[11px] tracking-[0.2em] uppercase text-[#D8B15A]/80">
+            <Link href="/" className="hover:text-[#F8F4EE] transition-colors">Home</Link>
+            <span>/</span>
+            <span className="text-[#F8F4EE]">Collections</span>
+          </nav>
+          <div className="ornament-divider mb-3">
+            <span className="text-[#C89B3C] font-sans text-[10px] tracking-[0.3em] uppercase">Curated Catalog</span>
           </div>
           <h1
-            className="text-[#F8F4EE]"
+            className="text-[#F8F4EE] leading-none"
             style={{
               fontFamily: 'var(--font-cormorant), serif',
-              fontSize: 'clamp(2.5rem, 6vw, 5rem)',
+              fontSize: 'clamp(2.5rem, 5vw, 4.5rem)',
               fontWeight: 300,
             }}
           >
             All Collections
           </h1>
+          <p className="mt-3 max-w-md text-sm sm:text-base text-[#F8F4EE]/80" style={{ fontFamily: 'var(--font-cormorant), serif' }}>
+            Timeless handicraft traditions handpicked from master artisan clusters across India.
+          </p>
         </div>
       </div>
 
