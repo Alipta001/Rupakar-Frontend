@@ -16,6 +16,7 @@ import { loginPathForCurrentLocation } from '@/lib/auth-redirect'
 import { Skeleton, ProductDetailSkeleton } from '@/components/skeletons'
 import { RatingStars, InteractiveRatingStars } from '@/components/ui/rating-stars'
 import BestSellers from './best-sellers'
+import FeaturedProducts from './featured-products'
 
 const guarantees = [
   { Icon: Shield, label: 'Authenticity Certified' },
@@ -486,8 +487,8 @@ function ProductDetailContent({ product }: { product: Product }) {
               </div>
             )}
 
-            <div className="flex items-center gap-4 mb-6">
-              <span className="text-[#5B4B3F] font-sans text-[10px] tracking-[0.2em] uppercase">Qty</span>
+            <div className="flex items-center gap-3 sm:gap-4 mb-6">
+              <span className="text-[#5B4B3F] font-sans text-[10px] tracking-[0.2em] uppercase">Select Quantity</span>
               <div className="flex items-center border border-[#D4C4B0]">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -505,32 +506,13 @@ function ProductDetailContent({ product }: { product: Product }) {
                   +
                 </button>
               </div>
-            </div>
 
-            {/* Actions */}
-            <div className="flex gap-3 mb-3">
-              <motion.button
-                onClick={() => handleAddToBag()}
-                disabled={addToCartMutation.isPending || isBuyNowPending || hasCartVariant(cartData, variantId)}
-                whileHover={{ scale: addToCartMutation.isPending || isBuyNowPending || hasCartVariant(cartData, variantId) ? 1 : 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 font-sans text-xs tracking-[0.2em] uppercase transition-all duration-300 ${
-                  hasCartVariant(cartData, variantId)
-                    ? 'bg-[#2A5E3A] text-[#F8F4EE]'
-                    : addToCartMutation.isPending
-                    ? 'bg-[#3A2418] text-[#C89B3C] cursor-not-allowed'
-                    : 'bg-[#1E1A17] text-[#F8F4EE] hover:bg-[#6B3E26]'
-                }`}
-              >
-                {hasCartVariant(cartData, variantId) ? <Check size={14} /> : <ShoppingBag size={14} />}
-                {hasCartVariant(cartData, variantId) ? 'In Bag' : addToCartMutation.isPending ? 'Adding…' : 'Add to Bag'}
-              </motion.button>
               <motion.button
                 onClick={handleWishlist}
                 disabled={wishlistMutation.isPending}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className={`w-14 border flex items-center justify-center transition-colors duration-300 ${
+                className={`w-10 h-10 border flex items-center justify-center transition-colors duration-300 ${
                   wishlist
                     ? 'border-[#7A1F1F] bg-[#7A1F1F]/10'
                     : 'border-[#D4C4B0] hover:border-[#C89B3C]'
@@ -542,6 +524,26 @@ function ProductDetailContent({ product }: { product: Product }) {
                   strokeWidth={1.5}
                   className={wishlist ? 'fill-[#7A1F1F] text-[#7A1F1F]' : 'text-[#1E1A17]'}
                 />
+              </motion.button>
+            </div>
+
+            {/* Actions */}
+            <div className="mb-3">
+              <motion.button
+                onClick={() => handleAddToBag()}
+                disabled={addToCartMutation.isPending || isBuyNowPending || hasCartVariant(cartData, variantId)}
+                whileHover={{ scale: addToCartMutation.isPending || isBuyNowPending || hasCartVariant(cartData, variantId) ? 1 : 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`w-full flex items-center justify-center gap-2 py-4 font-sans text-xs tracking-[0.2em] uppercase transition-all duration-300 ${
+                  hasCartVariant(cartData, variantId)
+                    ? 'bg-[#2A5E3A] text-[#F8F4EE]'
+                    : addToCartMutation.isPending
+                    ? 'bg-[#3A2418] text-[#C89B3C] cursor-not-allowed'
+                    : 'bg-[#1E1A17] text-[#F8F4EE] hover:bg-[#6B3E26]'
+                }`}
+              >
+                {hasCartVariant(cartData, variantId) ? <Check size={14} /> : <ShoppingBag size={14} />}
+                {hasCartVariant(cartData, variantId) ? 'In Bag' : addToCartMutation.isPending ? 'Adding…' : 'Add to Bag'}
               </motion.button>
             </div>
 
@@ -653,6 +655,12 @@ function ProductDetailContent({ product }: { product: Product }) {
           </p>
         </div>
       </div>
+
+      {/* Featured Products */}
+      <FeaturedProducts
+        currentProductId={product._id || product.id}
+        currentProductSlug={product.slug}
+      />
 
       <section id="reviews" className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="border-t border-[#D4C4B0] pt-10 sm:pt-16">

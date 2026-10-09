@@ -41,6 +41,7 @@ export interface Product {
   variants?: ProductVariant[]
   status?: string
   authenticity?: Record<string, unknown>
+  featured?: boolean
 }
 
 const baseFallbackProducts: Product[] = [
@@ -201,6 +202,7 @@ const normalizeProduct = (item: any): Product => {
     variants: Array.isArray(item?.variants) ? item.variants : [],
     status: item?.status,
     authenticity: item?.authenticity,
+    featured: Boolean(item?.featured ?? item?.badge?.toLowerCase() === 'featured'),
   }
 }
 

@@ -11,7 +11,7 @@ import { fetchProducts, type Product } from '@/lib/products-api'
 import { BestSellersSkeleton } from '@/components/skeletons'
 import { RatingStars } from '@/components/ui/rating-stars'
 
-function CarouselProductCard({ product, index }: { product: Product; index: number }) {
+export function CarouselProductCard({ product, index }: { product: Product; index: number }) {
   const [wishlist, setWishlist] = useState(false)
   const router = useRouter()
   const discountPercent =
