@@ -10,6 +10,7 @@ import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { ArrowRight, Sparkles } from 'lucide-react'
 import { ProductGridSkeleton, ErrorState } from '@/components/skeletons'
+import { ProductCard } from '@/components/product-card'
 
 const collectionProfiles: Record<string, { name: string; image: string; intro: string; detail: string }> = {
   terracotta: {
@@ -19,6 +20,18 @@ const collectionProfiles: Record<string, { name: string; image: string; intro: s
     detail: 'A study in warm clay, time-worn textures, and the artisans who turn the soil beneath us into objects made to last.',
   },
   'folk-art': {
+    name: 'Folk Art',
+    image: '/images/category-folk-art.jpg',
+    intro: 'Stories carried in line and pigment across generations.',
+    detail: 'Intricate visual storytelling honoring tribal traditions, mythological folklores, and generational canvas art.',
+  },
+  'folk-arts': {
+    name: 'Folk Arts',
+    image: '/images/category-folk-art.jpg',
+    intro: 'Stories carried in line and pigment across generations.',
+    detail: 'Intricate visual storytelling honoring tribal traditions, mythological folklores, and generational canvas art.',
+  },
+  folkart: {
     name: 'Folk Art',
     image: '/images/category-folk-art.jpg',
     intro: 'Stories carried in line and pigment across generations.',
@@ -65,6 +78,24 @@ const collectionProfiles: Record<string, { name: string; image: string; intro: s
     image: '/images/gallery-2.jpg',
     intro: 'Natural golden fibers shaped into purposeful, sustainable craft.',
     detail: 'Eco-conscious craftsmanship turning humble plant fibers into textured, elegant decor and lifestyle essentials.',
+  },
+  jewelry: {
+    name: 'Artisan Jewelry',
+    image: '/images/gallery-1.jpg',
+    intro: 'Handcrafted adornments celebrating indigenous metals, terracotta beads, and heritage motifs.',
+    detail: 'Timeless wearable craft shaped by generational metalsmiths and clay artisans.',
+  },
+  jewellery: {
+    name: 'Artisan Jewelry',
+    image: '/images/gallery-1.jpg',
+    intro: 'Handcrafted adornments celebrating indigenous metals, terracotta beads, and heritage motifs.',
+    detail: 'Timeless wearable craft shaped by generational metalsmiths and clay artisans.',
+  },
+  pottery: {
+    name: 'Studio Pottery',
+    image: '/images/category-pottery.jpg',
+    intro: 'Wheel-thrown and hand-glazed functional stoneware rooted in natural clays.',
+    detail: 'Tactile everyday objects crafted by skilled studio potters using local clays and organic glazes.',
   },
 }
 
@@ -196,15 +227,13 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
           ) : isError && productItems.length === 0 ? (
             <ErrorState error={error} onRetry={() => refetch()} isRetrying={isFetching} className="py-16" />
           ) : productItems.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3.5 sm:gap-5 md:grid-cols-4">
-              {productItems.map((product: any) => (
-                <Link key={product.id ?? product._id ?? product.slug} href={`/products/${product.slug ?? product.id}`} className="group">
-                  <div className="relative mb-4 aspect-[3/4] overflow-hidden bg-[#D4C4B0]">
-                    <Image src={product.image ?? profile.image} alt={product.name} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
-                  </div>
-                  <p className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#C89B3C]">{product.craft ?? profile.name}</p>
-                  <h3 className="mt-1 text-xl group-hover:text-[#6B3E26]" style={{ fontFamily: 'var(--font-cormorant), serif' }}>{product.name}</h3>
-                </Link>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-7">
+              {productItems.map((product: any, idx: number) => (
+                <ProductCard
+                  key={product.id ?? product._id ?? product.slug ?? idx}
+                  product={product}
+                  priority={idx < 4}
+                />
               ))}
             </div>
           ) : (
