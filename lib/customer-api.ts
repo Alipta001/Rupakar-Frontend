@@ -298,6 +298,103 @@ export async function fetchOrderCancellationRequests(orderId: string) {
   return unwrap<any[]>(response.data)
 }
 
+export type ReturnItemEligibility = {
+  variantId: string
+  productId: string
+  productName: string
+  vendorId?: string | null
+  vendorOrderId?: string | null
+  purchasedQuantity: number
+  remainingQuantity: number
+  unitPrice: number
+  lineTotal: number
+  isDelivered: boolean
+  deliveredAt?: string | null
+  eligibleUntil?: string | null
+  canReturn: boolean
+  reason?: string | null
+  supportedResolutions: Array<'RETURN' | 'REPLACEMENT'>
+  activeReturn?: {
+    _id: string
+    returnNumber: string
+    status: string
+    type: string
+    createdAt: string
+  } | null
+}
+
+export type OrderReturnEligibility = {
+  orderId: string
+  canReturnAny: boolean
+  items: ReturnItemEligibility[]
+  item?: ReturnItemEligibility | null
+}
+
+export type CreateReturnPayload = {
+  items: Array<{
+    variantId: string
+    quantity: number
+    reason?: string
+    notes?: string
+  }>
+  type?: 'RETURN' | 'REPLACEMENT'
+  vendorOrderId?: string
+  reason?: string
+  description?: string
+  notes?: string
+  evidenceImages?: string[]
+  idempotencyKey?: string
+}
+
+export async function fetchOrderReturnEligibility(orderId: string, variantId?: string): Promise<OrderReturnEligibility> {
+  const response = await AxiosInstance.get(`${endPoints.orders.list}/${encodeURIComponent(orderId)}/return-eligibility`, {
+    params: variantId ? { variantId } : {},
+  })
+  return unwrap<OrderReturnEligibility>(response.data)
+}
+
+export async function fetchOrderReturns(orderId: string) {
+  const response = await AxiosInstance.get(`${endPoints.orders.list}/${encodeURIComponent(orderId)}/returns`)
+  const payload = unwrap<any>(response.data)
+  return Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : []
+}
+
+export async function createReturnRequest(orderId: string, payload: CreateReturnPayload) {
+  const response = await AxiosInstance.post(`${endPoints.orders.list}/${encodeURIComponent(orderId)}/returns`, payload)
+  return unwrap<any>(response.data)
+}
+
+export async function fetchReturnDetail(returnId: string) {
+  const response = await AxiosInstance.get(`${endPoints.returns.list}/${encodeURIComponent(returnId)}`)
+  return unwrap<any>(response.data)
+}
+
+export async function fetchCustomerReturns(page = 1, limit = 20) {
+  const response = await AxiosInstance.get(endPoints.returns.list, { params: { page, limit } })
+  const payload = unwrap<any>(response.data)
+  return Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : []
+}
+
+export async function cancelReturnRequest(returnId: string, reason?: string) {
+  const response = await AxiosInstance.post(`${endPoints.returns.list}/${encodeURIComponent(returnId)}/cancel`, { reason })
+  return unwrap<any>(response.data)
+}
+
+export async function submitReturnPayoutDetails(
+  returnId: string,
+  payload: {
+    method: 'UPI' | 'BANK_ACCOUNT'
+    upiId?: string
+    accountHolderName?: string
+    accountNumber?: string
+    ifscCode?: string
+    bankName?: string
+  }
+) {
+  const response = await AxiosInstance.post(`${endPoints.returns.list}/${encodeURIComponent(returnId)}/payout-details`, payload)
+  return unwrap<any>(response.data)
+}
+
 export async function previewCheckout(payload: Record<string, any> = {}) {
   const response = await AxiosInstance.post(endPoints.checkout.preview, payload)
   return unwrap<any>(response.data)
@@ -340,4 +437,19 @@ export async function fetchBrands() {
   const response = await AxiosInstance.get(endPoints.brands.list)
   const payload = response.data?.data ?? response.data ?? []
   return Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+}
+
+export async function fetchReturnSupportTickets(returnId: string) {
+  const response = await AxiosInstance.get(`${endPoints.support.tickets}?returnId=${encodeURIComponent(returnId)}`)
+  return unwrap<any>(response.data)
+}
+
+export async function createReturnSupportTicket(payload: {
+  returnId: string
+  category: string
+  subject: string
+  message: string
+}) {
+  const response = await AxiosInstance.post(endPoints.support.tickets, payload)
+  return unwrap<any>(response.data)
 }

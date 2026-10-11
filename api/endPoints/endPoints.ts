@@ -38,6 +38,13 @@ export const endPoints = {
     list: "/orders",
     details: "/orders/:id",
     cancel: "/orders/:id/cancel",
+    returnEligibility: "/orders/:id/return-eligibility",
+    returns: "/orders/:id/returns",
+  },
+  returns: {
+    list: "/returns",
+    details: "/returns/:id",
+    cancel: "/returns/:id/cancel",
   },
   checkout: {
     preview: "/checkout/preview",
@@ -51,5 +58,8 @@ export const endPoints = {
     product: "/reviews/product",
     create: "/reviews",
     eligibility: "/reviews/eligibility",
+  },
+  support: {
+    tickets: "/support/tickets",
   },
 };

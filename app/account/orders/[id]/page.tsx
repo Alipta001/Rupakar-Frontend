@@ -5,8 +5,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, MapPin, FileText, Download, X } from 'lucide-react'
-import { downloadOrderInvoicePdf, fetchOrder, fetchOrderInvoice, cancelOrder, createCancellationRequest, fetchOrderCancellationRequests } from '@/lib/customer-api'
+import { ArrowLeft, Package, Truck, CheckCircle, AlertCircle, Clock, XCircle, MapPin, FileText, Download, X, RefreshCw } from 'lucide-react'
+import {
+  downloadOrderInvoicePdf,
+  fetchOrder,
+  fetchOrderInvoice,
+  cancelOrder,
+  createCancellationRequest,
+  fetchOrderCancellationRequests,
+  fetchOrderReturnEligibility,
+  fetchOrderReturns,
+} from '@/lib/customer-api'
+import ReturnRequestModal from '@/components/return-request-modal'
 import { getCustomerErrorMessage } from '@/lib/api-errors'
 import { toast } from '@/hooks/use-toast'
 import { OrderDetailSkeleton, ErrorState } from '@/components/skeletons'
@@ -129,6 +139,21 @@ export default function OrderDetailPage({ params }: Props) {
     retry: false,
   })
 
+  const { data: eligibilityData } = useQuery({
+    queryKey: ['order-return-eligibility', id],
+    queryFn: () => fetchOrderReturnEligibility(id),
+    enabled: Boolean(order),
+    retry: false,
+  })
+
+  const { data: orderReturns = [] } = useQuery({
+    queryKey: ['order-returns', id],
+    queryFn: () => fetchOrderReturns(id),
+    enabled: Boolean(order),
+    retry: false,
+  })
+
+  const [returningItem, setReturningItem] = useState<{ item: any; eligibility: any; vendorOrderId?: string } | null>(null)
   const [cancellingItem, setCancellingItem] = useState<any>(null)
   const [cancelReason, setCancelReason] = useState('Ordered by mistake')
   const [cancelNote, setCancelNote] = useState('')
@@ -387,6 +412,12 @@ export default function OrderDetailPage({ params }: Props) {
                       : null
                     const isItemCancellable = !isCancelled && !itemRequest && ['PENDING_PAYMENT', 'PAID', 'CONFIRMED', 'PROCESSING', 'PACKED'].includes(String(group.status || order.status).toUpperCase())
 
+                    const itemEligibility = eligibilityData?.items?.find((e: any) => String(e.variantId) === String(item.variantId))
+                    const activeReturn = itemEligibility?.activeReturn || (Array.isArray(orderReturns)
+                      ? orderReturns.find((r: any) => (r.items || []).some((ri: any) => String(ri.variantId) === String(item.variantId)))
+                      : null)
+                    const isDelivered = ['DELIVERED', 'RETURNED'].includes(String(group.status || order.status).toUpperCase()) || Boolean(itemEligibility?.isDelivered)
+
                     return <div key={`${item.variantId ?? item.sku ?? i}`} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3 border-b border-[#EFE3D3] last:border-0">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className="w-16 h-16 bg-[#EFE3D3] flex-shrink-0 overflow-hidden rounded">
@@ -415,6 +446,17 @@ export default function OrderDetailPage({ params }: Props) {
                               )}
                             </div>
                           )}
+                          {activeReturn && (
+                            <div className="mt-1">
+                              <Link
+                                href={`/account/returns/${activeReturn._id}`}
+                                className="inline-flex items-center gap-1 text-[10px] font-sans px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 transition-colors"
+                              >
+                                <RefreshCw size={10} />
+                                {activeReturn.type === 'REPLACEMENT' ? 'Replacement' : 'Return'} ({String(activeReturn.status).replace('_', ' ')}) →
+                              </Link>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="text-right flex sm:flex-col items-end justify-between sm:justify-center">
@@ -434,13 +476,32 @@ export default function OrderDetailPage({ params }: Props) {
                             Cancel item
                           </button>
                         )}
-                        {['DELIVERED', 'RETURNED'].includes(String(group.status || order.status).toUpperCase()) && item.productId && (
+                        {isDelivered && item.productId && (
                           <Link
                             href={`/products/${item.productId}`}
                             className="mt-1 text-[11px] font-sans text-[#C89B3C] underline hover:text-[#B7792B]"
                           >
                             Write a review
                           </Link>
+                        )}
+                        {isDelivered && !activeReturn && itemEligibility?.canReturn && (
+                          <button
+                            type="button"
+                            onClick={() => setReturningItem({
+                              item,
+                              eligibility: itemEligibility,
+                              vendorOrderId: itemEligibility.vendorOrderId || (group.id !== 'order-items' ? group.id : undefined),
+                            })}
+                            className="mt-1 text-[11px] font-sans text-[#C89B3C] underline hover:text-[#B7792B] font-medium"
+                          >
+                            Return / Replace
+                          </button>
+                        )}
+                        {isDelivered && !activeReturn && itemEligibility && !itemEligibility.canReturn && itemEligibility.remainingQuantity === 0 && (
+                          <span className="mt-1 text-[10px] font-sans text-stone-500">Fully Returned</span>
+                        )}
+                        {isDelivered && !activeReturn && itemEligibility?.reason === 'RETURN_WINDOW_EXPIRED' && (
+                          <span className="mt-1 text-[10px] font-sans text-stone-400">Return window closed</span>
                         )}
                       </div>
                     </div>
@@ -585,6 +646,17 @@ export default function OrderDetailPage({ params }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {returningItem && (
+        <ReturnRequestModal
+          orderId={id}
+          orderNumber={orderNumber}
+          item={returningItem.item}
+          eligibility={returningItem.eligibility}
+          isOpen={Boolean(returningItem)}
+          onClose={() => setReturningItem(null)}
+        />
       )}
     </div>
   )
